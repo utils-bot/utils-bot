@@ -1,4 +1,3 @@
-# the code must be updated to see this line :3
 from discord import app_commands, Intents, Client, Interaction, Object, Embed, File, Game, Status, Color, Member
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
