@@ -51,19 +51,19 @@ async def scripteval(interaction: Interaction, script: str):
     if interaction.user.id not in configurations.owner_ids:
         await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red()), ephemeral=True)
         return
-    
+    msg = interaction.followup.send(embed=Embed(color=Color.blue(), title='Executing...', description='Executing the script, if there is a reply this message will be edited'), wait=True)
     try:
         result = eval(script)
     except Exception as e:
         print("""----------Exception in command /eval----------""")
         print(e)
         print("""----------End----------""")
-        await interaction.followup.send(embed=Embed(title="Exception occurred", description=str(e), color=Color.red()), ephemeral=True)
+        await msg.edit(embed=Embed(title="Exception occurred", description=str(e), color=Color.red()), ephemeral=True)
     else:
         if result is not None:
-            await interaction.followup.send(embed=Embed(title="Result", description=str(result), color=Color.green()), ephemeral=True)
+            await msg.edit(embed=Embed(title="Result", description=str(result), color=Color.green()), ephemeral=True)
         else:
-            await interaction.followup.send(embed=Embed(title="Script executed", color=Color.green()), ephemeral=True)
+            await msg.edit(embed=Embed(title="Script executed", color=Color.green()), ephemeral=True)
 
 @tree.command(name='update', description='OWNER ONLY - update bot repo', guild=Object(id=configurations.owner_guild_id))
 async def update_bot(interaction: Interaction):
