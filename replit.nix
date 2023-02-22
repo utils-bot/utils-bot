@@ -1,5 +1,6 @@
 { pkgs }: {
   deps = [
+    pkgs.pipreqs
     pkgs.chromedriver
     pkgs.chromium
     pkgs.python310Full
