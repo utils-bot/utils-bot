@@ -181,21 +181,22 @@ async def screenshot(interaction: Interaction, url: str, window_height: int = 19
     if global_ratelimit >= configurations.max_global_ratelimit:
         await interaction.followup.send(embed=Embed(color=Color.red(), title='Rate-limited', description='Bot is currently global rate-limited, please try again later'), ephemeral= True)
         return
-    
+    msg = await interaction.followup.send(embed=Embed(color=Color.blue(), title='Running', description='Screenshoting your requested website...'), wait = True)
+    sleep(2)
     global_ratelimit += 1
     try:
         image_bytes = get_screenshot(url=url, window_height=window_height, window_width=window_width)
         embed = Embed(title=f'Screenshot of {url}', color=Color.green())
         embed.set_image(url='attachment://screenshot.png')
-        await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'), ephemeral=True)
+        await msg.edit(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
     except Exception as e:
         print("""----------Exception in command /screenshot----------""")
         print(e)
         print("""----------End----------""")
         if interaction.user.id in configurations.owner_ids:
-            await interaction.followup.send(embed=Embed(title='Exception Occurred', description=f'Exception occurred: {e}', color=Color.red()), ephemeral=True)
+            await msg.edit(embed=Embed(title='Exception Occurred', description=f'Exception occurred: {e}', color=Color.red()))
         else:
-            await interaction.followup.send(embed = Embed(title='Error', description='Exception occurred, we are trying to fix asap', color=Color.red()), ephemeral=True)
+            await msg.edit(embed = Embed(title='Error', description='Exception occurred, we are trying to fix asap', color=Color.red()))
     global_ratelimit += -1
 
 """
