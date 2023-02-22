@@ -14,7 +14,7 @@ from jsondb import get_whitelist, update_whitelist, beta_check
 
 """
 -------------------------------------------------
-DEFINING
+DEFINING VARS
 -------------------------------------------------
 """
 class configurations:
