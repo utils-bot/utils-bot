@@ -5,7 +5,7 @@ getLogger('werkzeug').disabled = True
 app = Flask('')
 @app.get('/')
 def root():
-    return 'Hello, website is live at root'
+    return 'online ok'
 
 def runner():
     app.run(host = '0.0.0.0', port=8080)
