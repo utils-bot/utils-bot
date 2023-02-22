@@ -65,6 +65,23 @@ async def scripteval(interaction: Interaction, script: str):
         else:
             await interaction.followup.send(embed=Embed(title="Script executed", color=Color.green()), ephemeral=True)
 
+@tree.command(name='update', description='OWNER ONLY - update bot repo', guild=Object(id=configurations.owner_guild_id))
+async def update_bot(interaction: Interaction):
+    await interaction.response.defer(ephemeral=True)
+    if interaction.user.id not in configurations.owner_ids:
+        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red()), ephemeral=True)
+        return
+    
+    try:
+        system('git pull')
+    except Exception as e:
+        print("""----------Exception in command /update----------""")
+        print(e)
+        print("""----------End----------""")
+        await interaction.followup.send(embed=Embed(title="Exception occurred", description=str(e), color=Color.red()), ephemeral=True)
+    else:
+        await interaction.followup.send(embed=Embed(title="Done", color=Color.green(), description='Successfully updated the bot repo on Github.'), ephemeral=True)
+
 @tree.command(name='sync', description='OWNER ONLY - sync all commands to all guilds manually', guild=Object(id=configurations.owner_guild_id))
 async def sync(interaction: Interaction):
     await interaction.response.defer(ephemeral=True)
