@@ -108,7 +108,7 @@ async def whitelist_list(interaction: Interaction):
         current_list = ""
         for i in get_whitelist():
             current_list += f'<@{i}> ({i})'
-        embed.add_field(name='IDs', value = current_list)
+        embed.add_field(name='Users:', value = current_list)
         await interaction.followup.send(embed=embed, ephemeral=True)
     except Exception as e:
         print("""----------Exception in command /whitelist_list----------""")
@@ -125,7 +125,7 @@ async def whitelist_modify(interaction: Interaction, user: Member, add: bool = T
     
     try:
         update_status = update_whitelist(id = user.id, add = add)
-        await interaction.followup.send(embed=Embed(title='Done', description=f'Successfully {"added" if bool else "removed"} this user in the list: {user.id} ({user.id})', color = Color.green()) if update_status else Embed(title='Failed', description='A error occured', color = Color.green()), ephemeral=True)
+        await interaction.followup.send(embed=Embed(title='Done', description=f'Successfully {"added" if bool else "removed"} this user in the list: {user.mention} ({user.id})', color = Color.green()) if update_status else Embed(title='Failed', description='A error occured', color = Color.green()), ephemeral=True)
     except Exception as e:
         print("""----------Exception in command /whitelist_modify----------""")
         print(e)
