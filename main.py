@@ -75,6 +75,7 @@ async def update_bot(interaction: Interaction):
         return
     
     try:
+        system('git checkout *')
         system('git pull')
     except Exception as e:
         print("""----------Exception in command /update----------""")
