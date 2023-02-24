@@ -23,6 +23,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 5
     default_maintenance_status = False
+    code_version = 'v0.1'
 
 intents = Intents.default()
 intents.members = True
@@ -83,6 +84,15 @@ async def update_bot(interaction: Interaction):
     else:
         await interaction.followup.send(embed=Embed(title="Done", color=Color.green(), description='Successfully updated the bot repo on Github.'), ephemeral=True)
 
+@tree.command(name='version', description='OWNER ONLY - check the code version', guild=Object(id=configurations.owner_guild_id))
+async def sync(interaction: Interaction):
+    await interaction.response.defer(ephemeral=True)
+    if interaction.user.id not in configurations.owner_ids:
+        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red()), ephemeral=True)
+        return
+    
+    await interaction.followup.send(ephemeral=True, embed=Embed(color=Color.green(), title = 'Code version:', description= f'Code version {configurations.code_version}'))
+
 @tree.command(name='sync', description='OWNER ONLY - sync all commands to all guilds manually', guild=Object(id=configurations.owner_guild_id))
 async def sync(interaction: Interaction):
     await interaction.response.defer(ephemeral=True)
@@ -133,8 +143,9 @@ async def whitelist_list(interaction: Interaction):
         print("""----------End----------""")
         await interaction.followup.send(embed=Embed(title="Exception occurred", description=str(e), color=Color.red()), ephemeral=True)
 
-@tree.command(name = 'whitelist_modify', description='OWNER ONLY - Get beta whitelist list in database.json', guild=Object(id=configurations.owner_guild_id))
-async def whitelist_modify(interaction: Interaction, user: Member, add: bool = True):
+@tree.command(name = 'whitelist_modify', description='OWNER ONLY - Modify beta whitelist list in database.json', guild=Object(id=configurations.owner_guild_id))
+@app_commands.choices(choices = [app_commands.Choice(name = 'add', value = True), app_commands.Choice(name = 'remove', value = False)])
+async def whitelist_modify(interaction: Interaction, user: Member, add: app_commands.Choice[str]):
     await interaction.response.defer(ephemeral=True)
     if not interaction.user.id in configurations.owner_ids:
         await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red()), ephemeral=True)
