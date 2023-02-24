@@ -5,9 +5,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from time import sleep
-from os import environ, system
+from os import environ, system, path
 from keep_alive import ka
 from io import BytesIO
+import json
 from jsondb import get_whitelist, update_whitelist, beta_check
 # from enum import Enum
 
@@ -245,6 +246,9 @@ BOOT
 -------------------------------------------------
 """
 if __name__ == '__main__':
+    if not path.exists('whitelist.json'):
+        with open('whitelist.json', 'w+') as f:
+            json.dump({'whitelisted_beta_users': []}, f)
     ka()
     client.run(configurations.bot_token)
 
