@@ -145,8 +145,7 @@ async def whitelist_list(interaction: Interaction):
         await interaction.followup.send(embed=Embed(title="Exception occurred", description=str(e), color=Color.red()), ephemeral=True)
 
 @tree.command(name = 'whitelist_modify', description='OWNER ONLY - Modify beta whitelist list in database.json', guild=Object(id=configurations.owner_guild_id))
-@app_commands.choices(choices = [app_commands.Choice(name = 'add', value = True), app_commands.Choice(name = 'remove', value = False)])
-async def whitelist_modify(interaction: Interaction, user: Member, add: app_commands.Choice[str]):
+async def whitelist_modify(interaction: Interaction, user: Member, add: bool = True):
     await interaction.response.defer(ephemeral=True)
     if not interaction.user.id in configurations.owner_ids:
         await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red()), ephemeral=True)
