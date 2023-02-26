@@ -39,7 +39,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 5
     default_maintenance_status = False
-    code_version = 'v0.1.6'
+    code_version = 'v0.1.7'
 
 intents = Intents.default()
 intents.members = True
@@ -243,18 +243,17 @@ async def screenshot(interaction: Interaction, url: str, window_height: int = 19
     await interaction.response.defer(ephemeral=True)
     # conditions to stop executing the command
     if not beta_check(user = interaction.user.id, beta_bool = configurations.beta) or not interaction.user.id in configurations.owner_ids:
-        await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.', timestamp=datetime.now()), ephemeral = True)
+        await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction}', icon_url=interaction.user.avatar), ephemeral = True)
         return
     if interaction.guild_id is None:
-        await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.', color=Color.red(), timestamp=datetime.now()), ephemeral=True)
+        await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction}', icon_url=interaction.user.avatar), ephemeral=True)
         return
     if not url.startswith('http'):
-        await interaction.followup.send(embed=Embed(title='Error', description='Please provide a valid URL, including http or https.', color=Color.red(), timestamp=datetime.now()), ephemeral=True)
+        await interaction.followup.send(embed=Embed(title='Error', description='Please provide a valid URL, including http or https.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction}', icon_url=interaction.user.avatar), ephemeral=True)
         return
     if global_ratelimit >= configurations.max_global_ratelimit:
-        await interaction.followup.send(embed=Embed(color=Color.red(), title='Rate-limited', description='Bot is currently global rate-limited, please try again later', timestamp=datetime.now()), ephemeral= True)
+        await interaction.followup.send(embed=Embed(color=Color.red(), title='Rate-limited', description='Bot is currently global rate-limited, please try again later', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction}', icon_url=interaction.user.avatar), ephemeral= True)
         return
-    # msg = await interaction.followup.send(embed=Embed(color=Color.blue(), title='Running', description='Screenshoting your requested website...'), wait = True)
     sleep(2)
     global_ratelimit += 1
     try:
@@ -265,9 +264,9 @@ async def screenshot(interaction: Interaction, url: str, window_height: int = 19
     except Exception as e:
         ilog('Exception in command /screenshot:' + e, logtype= 'error', flag = 'command')
         if interaction.user.id in configurations.owner_ids:
-            await interaction.followup.send(embed=Embed(title='Exception Occurred', description=f'Exception occurred: {e}', color=Color.red(), timestamp=datetime.now()))
+            await interaction.followup.send(embed=Embed(title='Exception Occurred', description=f'Exception occurred: {e}', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction}', icon_url=interaction.user.avatar))
         else:
-            await interaction.followup.send(embed = Embed(title='Error', description='Exception occurred, we are trying to fix asap', color=Color.red(), timestamp=datetime.now()))
+            await interaction.followup.send(embed = Embed(title='Error', description='Exception occurred, we are trying to fix asap', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction}', icon_url=interaction.user.avatar))
     global_ratelimit += -1
 
 """
