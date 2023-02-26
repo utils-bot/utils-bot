@@ -83,8 +83,8 @@ async def update_bot(interaction: Interaction):
         return
     
     try:
-        system('git checkout *')
-        system('git pull')
+        system('git fetch --all')
+        system('git reset --hard origin/main')
     except Exception as e:
         ilog('Exception in command /update:' + e, logtype= 'error', flag = 'command')
         await interaction.followup.send(embed=Embed(title="Exception occurred", description=str(e), color=Color.red()), ephemeral=True)
