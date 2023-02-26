@@ -1,11 +1,17 @@
 import json
-
+from os import path
 def get_whitelist() -> list:
+    if not path.exists('whitelist.json'):
+        with open('whitelist.json', 'w+') as f:
+            json.dump({'whitelisted_beta_users': []}, f)
     with open('whitelist.json', 'r') as f:
         database = json.load(f)
     return database.get('whitelisted_beta_users', [])
 
 def update_whitelist(id: int, add: bool = True) -> bool:
+    if not path.exists('whitelist.json'):
+        with open('whitelist.json', 'w+') as f:
+            json.dump({'whitelisted_beta_users': []}, f)
     database = get_whitelist()
     if add:
         if id not in database:
