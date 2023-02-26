@@ -1,17 +1,17 @@
 from discord import app_commands, Intents, Client, Interaction, Object, Embed, File, Game, Status, Color, Member
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-from time import sleep
-from os import environ, system, path
-from keep_alive import ka
-from io import BytesIO
-import json
 from jsondb import get_whitelist, update_whitelist, beta_check
-import logging
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
 from logger import CustomFormatter, ilog
+from os import environ, system, path
+from selenium import webdriver
+from keep_alive import ka
+from time import sleep
+from io import BytesIO
+import logging
+import json
 # from enum import Enum
 
 discord_logger = logging.getLogger('discord')
