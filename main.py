@@ -246,8 +246,5 @@ BOOT
 -------------------------------------------------
 """
 if __name__ == '__main__':
-    if not path.exists('whitelist.json'):
-        with open('whitelist.json', 'w+') as f:
-            json.dump({'whitelisted_beta_users': []}, f)
     ka()
     client.run(configurations.bot_token)
