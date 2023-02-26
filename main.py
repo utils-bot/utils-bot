@@ -33,7 +33,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 5
     default_maintenance_status = False
-    code_version = 'v0.1.1'
+    code_version = 'v0.1.2'
 
 intents = Intents.default()
 intents.members = True
