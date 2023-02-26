@@ -10,7 +10,16 @@ from keep_alive import ka
 from io import BytesIO
 import json
 from jsondb import get_whitelist, update_whitelist, beta_check
+import logging
+from logger import CustomFormatter, ilog
 # from enum import Enum
+
+discord_logger = logging.getLogger('discord')
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+ch.setFormatter(CustomFormatter())
+discord_logger.addHandler(ch)
+del discord_logger
 
 """
 -------------------------------------------------
@@ -18,9 +27,9 @@ DEFINING VARS
 -------------------------------------------------
 """
 class configurations:
-    bot_token = environ.get('bot_token') 
+    bot_token = environ.get('bot_token', '') 
     owner_ids = [806432782111735818]
-    owner_guild_id = environ.get('owner_guild_id')
+    owner_guild_id = environ.get('owner_guild_id', 0)
     beta = True
     max_global_ratelimit = 5
     default_maintenance_status = False
@@ -58,9 +67,7 @@ async def scripteval(interaction: Interaction, script: str):
     try:
         result = eval(script)
     except Exception as e:
-        print("""----------Exception in command /eval----------""")
-        print(e)
-        print("""----------End----------""")
+        ilog('Exception in command /eval:' + e, logtype= 'error', flag = 'command')
         await msg.edit(embed=Embed(title="Exception occurred", description=str(e), color=Color.red()))
     else:
         if result is not None:
@@ -79,9 +86,7 @@ async def update_bot(interaction: Interaction):
         system('git checkout *')
         system('git pull')
     except Exception as e:
-        print("""----------Exception in command /update----------""")
-        print(e)
-        print("""----------End----------""")
+        ilog('Exception in command /update:' + e, logtype= 'error', flag = 'command')
         await interaction.followup.send(embed=Embed(title="Exception occurred", description=str(e), color=Color.red()), ephemeral=True)
     else:
         await interaction.followup.send(embed=Embed(title="Done", color=Color.green(), description='Successfully updated the bot repo on Github.'), ephemeral=True)
@@ -105,7 +110,7 @@ async def sync(interaction: Interaction):
     await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
     tree.copy_global_to(guild=Object(id=configurations.owner_guild_id))
     await tree.sync()
-    print(f'[+] Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}')
+    ilog(f'[+] Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}', logtype = 'info', flag = 'tree')
     await interaction.followup.send(embed=Embed(title="Command tree synced", color=Color.green(), description='Successfully synced the global command tree to all guilds'), ephemeral=True)
     await client.change_presence(activity=Game('synced. reloading...'), status=Status.dnd)
     sleep(2)
@@ -120,7 +125,8 @@ async def restartbot(interaction: Interaction):
         return
 
     await interaction.followup.send(embed=Embed(title="Received", description="Restart request received, killing docker container...", color=Color.green()), ephemeral=True)
-    print(f'[+] Restart request by {interaction.user.id} ({interaction.user.display_name})')
+    ilog(f'[+] Restart request by {interaction.user.id} ({interaction.user.display_name})', 'command', 'info')
+    ilog('Restarting...', 'system', 'critical')
     await client.change_presence(status=Status.dnd, activity=Game('restarting...'))
     sleep(5)
     system('kill 1')
@@ -140,9 +146,7 @@ async def whitelist_list(interaction: Interaction):
         embed.add_field(name='Users:', value = current_list)
         await interaction.followup.send(embed=embed, ephemeral=True)
     except Exception as e:
-        print("""----------Exception in command /whitelist_list----------""")
-        print(e)
-        print("""----------End----------""")
+        ilog('Exception in command /whitelist_list:' + e, logtype= 'error', flag = 'command')
         await interaction.followup.send(embed=Embed(title="Exception occurred", description=str(e), color=Color.red()), ephemeral=True)
 
 @tree.command(name = 'whitelist_modify', description='OWNER ONLY - Modify beta whitelist list in database.json', guild=Object(id=configurations.owner_guild_id))
@@ -156,9 +160,7 @@ async def whitelist_modify(interaction: Interaction, user: Member, add: bool = T
         update_status = update_whitelist(id = user.id, add = add)
         await interaction.followup.send(embed=Embed(title='Done', description=f'Successfully {"added" if bool else "removed"} this user in the list: {user.mention} ({user.id})', color = Color.green()) if update_status else Embed(title='Failed', description='A error occured', color = Color.green()), ephemeral=True)
     except Exception as e:
-        print("""----------Exception in command /whitelist_modify----------""")
-        print(e)
-        print("""----------End----------""")
+        ilog('Exception in command /whitelist_modify:' + e, logtype= 'error', flag = 'command')
         await interaction.followup.send(ephemeral= True, embed=Embed(title="Exception occurred", description=str(e), color=Color.red()))
 
 @tree.command(name = 'maintenance', description='OWNER ONLY - Toggle maintenance mode for supported commands')
@@ -202,9 +204,7 @@ async def screenshot(interaction: Interaction, url: str, window_height: int = 19
         embed.set_image(url='attachment://screenshot.png')
         await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
     except Exception as e:
-        print("""----------Exception in command /screenshot----------""")
-        print(e)
-        print("""----------End----------""")
+        ilog('Exception in command /screenshot:' + e, logtype= 'error', flag = 'command')
         if interaction.user.id in configurations.owner_ids:
             await interaction.followup.send(embed=Embed(title='Exception Occurred', description=f'Exception occurred: {e}', color=Color.red()))
         else:
@@ -234,11 +234,11 @@ async def on_ready():
     maintenance_status = configurations.default_maintenance_status
     await client.change_presence(activity=Game('starting...'), status=Status.dnd)
     sleep(2)
-    print("Syncing commands to the owner guild...")
+    ilog("Syncing commands to the owner guild...", 'init', 'info')
     await tree.sync(guild=Object(id=configurations.owner_guild_id))
-    print("Done! Bot is ready!")
-    print(str(client.user) + ' has connected to Discord.')
-    print('Connected to ' + str(len(client.guilds)) + ' guilds and ' + str(len(client.guilds)) + ' users.' )
+    ilog("Done! bot is now ready!", 'init', 'info')
+    ilog(str(client.user) + ' has connected to Discord.', 'init', 'info')
+    ilog('Connected to ' + str(len(client.guilds)) + ' guilds and ' + str(len(client.guilds)) + ' users.', 'init', 'info' )
     await client.change_presence(activity=Game('utils-bot'), status=Status.online)
 """
 -------------------------------------------------
@@ -247,8 +247,7 @@ BOOT
 """
 if __name__ == '__main__':
     if not path.exists('whitelist.json'):
-        with open('whitelist.json', '') as f:
+        with open('whitelist.json', 'w+') as f:
             json.dump({'whitelisted_beta_users': []}, f)
     ka()
     client.run(configurations.bot_token)
-
