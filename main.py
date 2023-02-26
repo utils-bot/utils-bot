@@ -258,7 +258,7 @@ async def screenshot(interaction: Interaction, url: str, window_height: int = 19
     global_ratelimit += 1
     try:
         image_bytes = get_screenshot(url=url, window_height=window_height, window_width=window_width)
-        embed = Embed(title='Success',description=f'Here is the website screenshot of {url}', color=Color.green(), timestamp=datetime.now())
+        embed = Embed(title='Success',description=f'Here is the website screenshot of {url}', color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction}', icon_url=interaction.user.avatar)
         embed.set_image(url='attachment://screenshot.png')
         await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
     except Exception as e:
