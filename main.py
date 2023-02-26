@@ -12,6 +12,7 @@ from time import sleep
 from io import BytesIO
 import logging
 import json
+from datetime import datetime
 # from enum import Enum
 
 discord_logger = logging.getLogger('discord')
@@ -33,7 +34,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 5
     default_maintenance_status = False
-    code_version = 'v0.1.2'
+    code_version = 'v0.1.3'
 
 intents = Intents.default()
 intents.members = True
@@ -60,26 +61,26 @@ BASE COMMANDS
 async def scripteval(interaction: Interaction, script: str):
     await interaction.response.defer(ephemeral=True)
     if interaction.user.id not in configurations.owner_ids:
-        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red()), ephemeral=True)
+        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()), ephemeral=True)
         return
-    msg = await interaction.followup.send(embed=Embed(color=Color.blue(), title='Executing...', description='Executing the script, if there is a reply this message will be edited'), wait=True)
+    msg = await interaction.followup.send(embed=Embed(color=Color.blue(), title='Executing...', description='Executing the script, if there is a reply this message will be edited', timestamp=datetime.now()), wait=True)
     sleep(2)
     try:
         result = eval(script)
     except Exception as e:
         ilog('Exception in command /eval:' + e, logtype= 'error', flag = 'command')
-        await msg.edit(embed=Embed(title="Exception occurred", description=str(e), color=Color.red()))
+        await msg.edit(embed=Embed(title="Exception occurred", description=str(e), color=Color.red(), timestamp=datetime.now()))
     else:
         if result is not None:
-            await msg.edit(embed=Embed(title="Result", description=str(result), color=Color.green()))
+            await msg.edit(embed=Embed(title="Result", description=str(result), color=Color.green(), timestamp=datetime.now()))
         else:
-            await msg.edit(embed=Embed(title="Script executed", color=Color.green(), description='Script executed successfully, the result, might be None or too long to fill in here.'))
+            await msg.edit(embed=Embed(title="Script executed", color=Color.green(), description='Script executed successfully, the result, might be None or too long to fill in here.', timestamp=datetime.now()))
 
 @tree.command(name='update', description='OWNER ONLY - update bot repo', guild=Object(id=configurations.owner_guild_id))
 async def update_bot(interaction: Interaction):
     await interaction.response.defer(ephemeral=True)
     if interaction.user.id not in configurations.owner_ids:
-        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red()), ephemeral=True)
+        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()), ephemeral=True)
         return
     
     try:
@@ -87,15 +88,15 @@ async def update_bot(interaction: Interaction):
         system('git reset --hard origin/main')
     except Exception as e:
         ilog('Exception in command /update:' + e, logtype= 'error', flag = 'command')
-        await interaction.followup.send(embed=Embed(title="Exception occurred", description=str(e), color=Color.red()), ephemeral=True)
+        await interaction.followup.send(embed=Embed(title="Exception occurred", description=str(e), color=Color.red(), timestamp=datetime.now()), ephemeral=True)
     else:
-        await interaction.followup.send(embed=Embed(title="Done", color=Color.green(), description='Successfully updated the bot repo on Github.'), ephemeral=True)
+        await interaction.followup.send(embed=Embed(title="Done", color=Color.green(), description='Successfully updated the bot repo on Github.', timestamp=datetime.now()), ephemeral=True)
 
 @tree.command(name='version', description='OWNER ONLY - check the code version', guild=Object(id=configurations.owner_guild_id))
 async def sync(interaction: Interaction):
     await interaction.response.defer(ephemeral=True)
     if interaction.user.id not in configurations.owner_ids:
-        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red()), ephemeral=True)
+        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()), ephemeral=True)
         return
     
     await interaction.followup.send(ephemeral=True, embed=Embed(color=Color.green(), title = 'Code version:', description= f'Code version {configurations.code_version}'))
@@ -104,14 +105,14 @@ async def sync(interaction: Interaction):
 async def sync(interaction: Interaction):
     await interaction.response.defer(ephemeral=True)
     if interaction.user.id not in configurations.owner_ids:
-        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red()), ephemeral=True)
+        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()), ephemeral=True)
         return
     
     await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
     tree.copy_global_to(guild=Object(id=configurations.owner_guild_id))
     await tree.sync()
     ilog(f'[+] Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}', logtype = 'info', flag = 'tree')
-    await interaction.followup.send(embed=Embed(title="Command tree synced", color=Color.green(), description='Successfully synced the global command tree to all guilds'), ephemeral=True)
+    await interaction.followup.send(embed=Embed(title="Command tree synced", color=Color.green(), description='Successfully synced the global command tree to all guilds', timestamp=datetime.now()), ephemeral=True)
     await client.change_presence(activity=Game('synced. reloading...'), status=Status.dnd)
     sleep(2)
     await client.change_presence(activity=Game('utils-bot'), status=Status.online)
@@ -121,10 +122,10 @@ async def sync(interaction: Interaction):
 async def restartbot(interaction: Interaction):
     await interaction.response.defer(ephemeral=True)
     if interaction.user.id not in configurations.owner_ids:
-        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red()), ephemeral=True)
+        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()), ephemeral=True)
         return
 
-    await interaction.followup.send(embed=Embed(title="Received", description="Restart request received, killing docker container...", color=Color.green()), ephemeral=True)
+    await interaction.followup.send(embed=Embed(title="Received", description="Restart request received, killing docker container...", color=Color.green(), timestamp=datetime.now()), ephemeral=True)
     ilog(f'[+] Restart request by {interaction.user.id} ({interaction.user.display_name})', 'command', 'info')
     ilog('Restarting...', 'system', 'critical')
     await client.change_presence(status=Status.dnd, activity=Game('restarting...'))
@@ -135,11 +136,11 @@ async def restartbot(interaction: Interaction):
 async def whitelist_list(interaction: Interaction):
     await interaction.response.defer(ephemeral=True)
     if not interaction.user.id in configurations.owner_ids:
-        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red()), ephemeral=True)
+        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()), ephemeral=True)
         return
     
     try:
-        embed = Embed(title='Whitelist list', description='Here is the list of beta-whitelisted user IDs:', color = Color.green())
+        embed = Embed(title='Whitelist list', description='Here is the list of beta-whitelisted user IDs:', color = Color.green(), timestamp=datetime.now())
         current_list = ""
         for i in get_whitelist():
             current_list += f'<@{i}> ({i})'
@@ -147,32 +148,32 @@ async def whitelist_list(interaction: Interaction):
         await interaction.followup.send(embed=embed, ephemeral=True)
     except Exception as e:
         ilog('Exception in command /whitelist_list:' + e, logtype= 'error', flag = 'command')
-        await interaction.followup.send(embed=Embed(title="Exception occurred", description=str(e), color=Color.red()), ephemeral=True)
+        await interaction.followup.send(embed=Embed(title="Exception occurred", description=str(e), color=Color.red(), timestamp=datetime.now()), ephemeral=True)
 
 @tree.command(name = 'whitelist_modify', description='OWNER ONLY - Modify beta whitelist list in database.json', guild=Object(id=configurations.owner_guild_id))
 async def whitelist_modify(interaction: Interaction, user: Member, add: bool = True):
     await interaction.response.defer(ephemeral=True)
     if not interaction.user.id in configurations.owner_ids:
-        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red()), ephemeral=True)
+        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()), ephemeral=True)
         return
     
     try:
         update_status = update_whitelist(id = user.id, add = add)
-        await interaction.followup.send(embed=Embed(title='Done', description=f'Successfully {"added" if bool else "removed"} this user in the list: {user.mention} ({user.id})', color = Color.green()) if update_status else Embed(title='Failed', description='A error occured', color = Color.green()), ephemeral=True)
+        await interaction.followup.send(embed=Embed(title='Done', description=f'Successfully {"added" if bool else "removed"} this user in the list: {user.mention} ({user.id})', color = Color.green(), timestamp=datetime.now()) if update_status else Embed(title='Failed', description='A error occured', color = Color.green(), timestamp=datetime.now()), ephemeral=True)
     except Exception as e:
         ilog('Exception in command /whitelist_modify:' + e, logtype= 'error', flag = 'command')
-        await interaction.followup.send(ephemeral= True, embed=Embed(title="Exception occurred", description=str(e), color=Color.red()))
+        await interaction.followup.send(ephemeral= True, embed=Embed(title="Exception occurred", description=str(e), color=Color.red(), timestamp=datetime.now()))
 
 @tree.command(name = 'maintenance', description='OWNER ONLY - Toggle maintenance mode for supported commands')
 async def maintenance(interaction: Interaction, status_to_set: bool = False):
     await interaction.response.defer(ephemeral = True)
     if not interaction.user.id in configurations.owner_ids:
-        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red()), ephemeral=True)
+        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()), ephemeral=True)
         return
     global maintenance_status
     old = maintenance_status
     maintenance_status = status_to_set
-    await interaction.followup.send(embed=Embed(color=Color.green(), title='Success', description=f'Maintenance status changed: {old} -> {maintenance_status}'))
+    await interaction.followup.send(embed=Embed(color=Color.green(), title='Success', description=f'Maintenance status changed: {old} -> {maintenance_status}', timestamp=datetime.now()))
 """
 -------------------------------------------------
 FEATURE COMMANDS (beta)
@@ -184,31 +185,31 @@ async def screenshot(interaction: Interaction, url: str, window_height: int = 19
     await interaction.response.defer(ephemeral=True)
     # conditions to stop executing the command
     if not beta_check(user = interaction.user.id, beta_bool = configurations.beta) or not interaction.user.id in configurations.owner_ids:
-        await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.'), ephemeral = True)
+        await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.', timestamp=datetime.now()), ephemeral = True)
         return
     if interaction.guild_id is None:
-        await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.', color=Color.red()), ephemeral=True)
+        await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.', color=Color.red(), timestamp=datetime.now()), ephemeral=True)
         return
     if not url.startswith('http'):
-        await interaction.followup.send(embed=Embed(title='Error', description='Please provide a valid URL, including http or https.', color=Color.red()), ephemeral=True)
+        await interaction.followup.send(embed=Embed(title='Error', description='Please provide a valid URL, including http or https.', color=Color.red(), timestamp=datetime.now()), ephemeral=True)
         return
     if global_ratelimit >= configurations.max_global_ratelimit:
-        await interaction.followup.send(embed=Embed(color=Color.red(), title='Rate-limited', description='Bot is currently global rate-limited, please try again later'), ephemeral= True)
+        await interaction.followup.send(embed=Embed(color=Color.red(), title='Rate-limited', description='Bot is currently global rate-limited, please try again later', timestamp=datetime.now()), ephemeral= True)
         return
     # msg = await interaction.followup.send(embed=Embed(color=Color.blue(), title='Running', description='Screenshoting your requested website...'), wait = True)
     sleep(2)
     global_ratelimit += 1
     try:
         image_bytes = get_screenshot(url=url, window_height=window_height, window_width=window_width)
-        embed = Embed(title='Success',description=f'Here is the website screenshot of {url}' ,  color=Color.green())
+        embed = Embed(title='Success',description=f'Here is the website screenshot of {url}', color=Color.green(), timestamp=datetime.now())
         embed.set_image(url='attachment://screenshot.png')
         await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
     except Exception as e:
         ilog('Exception in command /screenshot:' + e, logtype= 'error', flag = 'command')
         if interaction.user.id in configurations.owner_ids:
-            await interaction.followup.send(embed=Embed(title='Exception Occurred', description=f'Exception occurred: {e}', color=Color.red()))
+            await interaction.followup.send(embed=Embed(title='Exception Occurred', description=f'Exception occurred: {e}', color=Color.red(), timestamp=datetime.now()))
         else:
-            await interaction.followup.send(embed = Embed(title='Error', description='Exception occurred, we are trying to fix asap', color=Color.red()))
+            await interaction.followup.send(embed = Embed(title='Error', description='Exception occurred, we are trying to fix asap', color=Color.red(), timestamp=datetime.now()))
     global_ratelimit += -1
 
 """
