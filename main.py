@@ -39,7 +39,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 5
     default_maintenance_status = False
-    bot_version = 'v0.1.11'
+    bot_version = 'v0.1.11a' # ignore
 
 intents = Intents.default()
 intents.members = True
@@ -259,7 +259,7 @@ async def screenshot(interaction: Interaction, url: str, delay: int = 0, window_
     global_ratelimit += 1
     try:
         image_bytes = get_screenshot(url=url, window_height=window_height, window_width=window_width, delay = delay)
-        embed = Embed(title='Success',description=f'Here is the website screenshot of {url}', color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction}', icon_url=interaction.user.avatar)
+        embed = Embed(title='Success',description=f'Here is the website screenshot of {url}', color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         embed.set_image(url='attachment://screenshot.png')
         await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
     except Exception as e:
