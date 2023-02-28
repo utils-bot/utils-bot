@@ -259,7 +259,7 @@ async def screenshot(interaction: Interaction, url: str, delay: int = 0, resolut
     if not url.startswith('http'):
         await interaction.followup.send(embed=Embed(title='Error', description='Please provide a valid URL, including http or https.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
         return
-    if not delay > 20:
+    if delay > 20:
         await interaction.followup.send(embed=Embed(title='Error', description='Delay must be less than 20s.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
         return
     if interaction.user.id not in configurations.owner_ids:
