@@ -39,7 +39,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 5
     default_maintenance_status = False
-    bot_version = 'v0.1.10b'
+    bot_version = 'v0.1.10c'
 
 intents = Intents.default()
 intents.members = True
@@ -276,6 +276,8 @@ FEATURE COMMANDS (official)
 """
 @tree.command(name='echo', description='Echo the provided string to the user')
 async def echo(interaction: Interaction, string: str, ephemeral: bool = True):
+    if interaction.user.id not in configurations.owner_ids:
+        ephemeral = True
     await interaction.response.defer(ephemeral=ephemeral)
     await interaction.followup.send(string, ephemeral=ephemeral)
 
@@ -283,7 +285,7 @@ async def echo(interaction: Interaction, string: str, ephemeral: bool = True):
 async def uptime(interaction: Interaction):
     global unix_uptime
     await interaction.response.defer(ephemeral=True)
-    await interaction.followup.send(embed=Embed(title="Current bot uptime", description=f"Bot has been online for <t:{unix_uptime}:R> (<t:{unix_uptime}>) ", color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
+    await interaction.followup.send(embed=Embed(title="Current bot uptime", description=f"Bot was online <t:{unix_uptime}:R> (<t:{unix_uptime}:T> <t:{unix_uptime}:d>) ", color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
 
 """
 -------------------------------------------------
