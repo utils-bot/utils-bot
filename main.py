@@ -54,7 +54,7 @@ def get_screenshot(url, window_height: int, window_width: int, delay: int):
         driver.get(url)
         wait = WebDriverWait(driver, 10)
         wait.until(EC.presence_of_element_located((By.XPATH, "//body[not(@class='loading')]")))
-        time.sleep(3 + delay)
+        sleep(3 + delay)
         image_bytes = driver.get_screenshot_as_png()
     return image_bytes
 
@@ -306,6 +306,7 @@ async def on_ready():
     ilog("Syncing commands to the owner guild...", 'init', 'info')
     await tree.sync(guild=Object(id=configurations.owner_guild_id))
     ilog("Done! bot is now ready!", 'init', 'info')
+    ilog(f"Bot is currently on version {configurations.bot_version}", 'init', 'info')
     ilog(str(client.user) + ' has connected to Discord.', 'init', 'info')
     ilog('Connected to ' + str(len(client.guilds)) + ' guilds and ' + str(len(client.guilds)) + ' users.', 'init', 'info' )
     await client.change_presence(activity=Game('utils-bot'), status=Status.online)
