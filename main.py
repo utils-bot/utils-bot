@@ -39,7 +39,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 5
     default_maintenance_status = False
-    bot_version = 'v0.1.11b_e' # ignore
+    bot_version = 'v0.1.12' # ignore
 
 intents = Intents.default()
 intents.members = True
@@ -157,6 +157,7 @@ async def whitelist_list(interaction: Interaction, ephemeral: bool = False):
         await interaction.followup.send(embed=Embed(title="Exception occurred", description=str(e), color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
 
 @tree.command(name = 'whitelist_modify', description='OWNER ONLY - Modify beta whitelist list in database.json', guild=Object(id=configurations.owner_guild_id))
+@app_commands.describe(user = 'User that will be modified in the whitelist database', add = 'Mode to modify, True = add / False = remove')
 async def whitelist_modify(interaction: Interaction, user: Member, add: bool = True, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
@@ -223,6 +224,7 @@ async def set_bot_avatar(interaction: Interaction, url: str = ''):
 # @tree.command(name = 'bot_avatar', description='OWNER ONLY - Change the bot avatar with a png link or a image')
 
 @tree.command(name = 'maintenance', description='OWNER ONLY - Toggle maintenance mode for supported commands')
+@app_commands.describe(status_to_get = 'Status of maintenance to set into the database')
 async def maintenance(interaction: Interaction, status_to_set: bool = False):
     await interaction.response.defer(ephemeral = True)
     if interaction.user.id not in configurations.owner_ids:
@@ -239,7 +241,8 @@ FEATURE COMMANDS (beta)
 -------------------------------------------------
 """
 @tree.command(name='screenshot', description='Take a screenshot of a website')
-async def screenshot(interaction: Interaction, url: str, delay: int = 0, window_height: int = 1280, window_width: int = 720):
+@app_commands.describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s)', resolution = 'Resolution of the driver window. Format height:width')
+async def screenshot(interaction: Interaction, url: str, delay: int = 0, resolution: str = '1280:720'):
     global global_ratelimit
     await interaction.response.defer(ephemeral=True)
     # conditions to stop executing the command
@@ -252,12 +255,19 @@ async def screenshot(interaction: Interaction, url: str, delay: int = 0, window_
     if not url.startswith('http'):
         await interaction.followup.send(embed=Embed(title='Error', description='Please provide a valid URL, including http or https.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
         return
+    if not delay > 20:
+        await interaction.followup.send(embed=Embed(title='Error', description='Delay must be less than 20s.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
+        return
+    if interaction.user.id not in configurations.owner_ids:
+        resolution = '1280:720'
     if global_ratelimit >= configurations.max_global_ratelimit:
         await interaction.followup.send(embed=Embed(color=Color.red(), title='Rate-limited', description='Bot is currently global rate-limited, please try again later', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral= True)
         return
     sleep(2)
     global_ratelimit += 1
     try:
+        i = resolution.split(':')
+        window_height, window_width = i[0], i[1]
         image_bytes = get_screenshot(url=url, window_height=window_height, window_width=window_width, delay = delay)
         embed = Embed(title='Success',description=f'Here is the website screenshot of {url}', color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         embed.set_image(url='attachment://screenshot.png')
