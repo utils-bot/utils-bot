@@ -39,7 +39,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 5
     default_maintenance_status = False
-    code_version = 'v0.1.10a'
+    bot_version = 'v0.1.10b'
 
 intents = Intents.default()
 intents.members = True
@@ -104,7 +104,7 @@ async def sync(interaction: Interaction, ephemeral: bool = False):
         await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
         return
     
-    await interaction.followup.send(ephemeral=ephemeral, embed=Embed(color=Color.green(), title = 'Code version:', description= f'Code version {configurations.code_version}', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+    await interaction.followup.send(ephemeral=ephemeral, embed=Embed(color=Color.green(), title = 'Bot version:', description= f'Bot version {configurations.bot_version}', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
 @tree.command(name='sync', description='OWNER ONLY - sync all commands to all guilds manually', guild=Object(id=configurations.owner_guild_id))
 async def sync(interaction: Interaction, ephemeral: bool = False):
