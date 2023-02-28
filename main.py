@@ -39,7 +39,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 5
     default_maintenance_status = False
-    bot_version = 'v0.1.11a' # ignore
+    bot_version = 'v0.1.11b_e' # ignore
 
 intents = Intents.default()
 intents.members = True
@@ -276,6 +276,7 @@ FEATURE COMMANDS (official)
 -------------------------------------------------
 """
 @tree.command(name='echo', description='Echo the provided string to the user')
+@app_commands.describe(string='String to echo')
 async def echo(interaction: Interaction, string: str, ephemeral: bool = True):
     if interaction.user.id not in configurations.owner_ids:
         ephemeral = True
