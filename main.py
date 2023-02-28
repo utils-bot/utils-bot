@@ -39,7 +39,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 5
     default_maintenance_status = False
-    bot_version = 'v0.1.10c'
+    bot_version = 'v0.1.11'
 
 intents = Intents.default()
 intents.members = True
@@ -47,13 +47,14 @@ intents.message_content = True
 client = Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
-def get_screenshot(url, window_height: int, window_width: int):
+def get_screenshot(url, window_height: int, window_width: int, delay: int):
     options = Options()
     for arg in ['--no-sandbox', '--disable-dev-shm-usage', '--headless', '--disable-gpu', '--window-position=0,0', f'--window-size={window_height},{window_width}']: options.add_argument(arg)
     with webdriver.Chrome(options=options) as driver:
         driver.get(url)
         wait = WebDriverWait(driver, 10)
         wait.until(EC.presence_of_element_located((By.XPATH, "//body[not(@class='loading')]")))
+        time.sleep(3 + delay)
         image_bytes = driver.get_screenshot_as_png()
     return image_bytes
 
@@ -238,7 +239,7 @@ FEATURE COMMANDS (beta)
 -------------------------------------------------
 """
 @tree.command(name='screenshot', description='Take a screenshot of a website')
-async def screenshot(interaction: Interaction, url: str, window_height: int = 1920, window_width: int = 1080):
+async def screenshot(interaction: Interaction, url: str, delay: int = 0, window_height: int = 1280, window_width: int = 720):
     global global_ratelimit
     await interaction.response.defer(ephemeral=True)
     # conditions to stop executing the command
@@ -257,7 +258,7 @@ async def screenshot(interaction: Interaction, url: str, window_height: int = 19
     sleep(2)
     global_ratelimit += 1
     try:
-        image_bytes = get_screenshot(url=url, window_height=window_height, window_width=window_width)
+        image_bytes = get_screenshot(url=url, window_height=window_height, window_width=window_width, delay = delay)
         embed = Embed(title='Success',description=f'Here is the website screenshot of {url}', color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction}', icon_url=interaction.user.avatar)
         embed.set_image(url='attachment://screenshot.png')
         await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
