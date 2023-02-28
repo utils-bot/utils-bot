@@ -8,7 +8,7 @@ from logger import CustomFormatter, ilog
 from os import environ, system, path
 from selenium import webdriver
 from keep_alive import ka
-from time import sleep
+from time import sleep, time
 from io import BytesIO
 import logging
 import json
@@ -279,6 +279,12 @@ async def echo(interaction: Interaction, string: str, ephemeral: bool = True):
     await interaction.response.defer(ephemeral=ephemeral)
     await interaction.followup.send(string, ephemeral=ephemeral)
 
+@tree.command(name='uptime', description='Returns the bot uptime.')
+async def uptime(interaction: Interaction):
+    global unix_uptime
+    await interaction.response.defer(ephemeral=True)
+    await interaction.followup.send(embed=Embed(title="Current bot uptime", description=f"Bot has been online for <t:{unix_uptime}:R> (<t:{unix_uptime}>) ", color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
+
 """
 -------------------------------------------------
 CLIENT EVENTS
@@ -288,6 +294,8 @@ CLIENT EVENTS
 async def on_ready():
     global global_ratelimit
     global maintenance_status
+    global unix_uptime
+    unix_uptime = round(time())
     global_ratelimit = 0
     maintenance_status = configurations.default_maintenance_status
     await client.change_presence(activity=Game('starting...'), status=Status.dnd)
