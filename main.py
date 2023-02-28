@@ -79,7 +79,7 @@ async def scripteval(interaction: Interaction, script: str, ephemeral: bool = Fa
         if result is not None:
             await msg.edit(embed=Embed(title="Result", description=str(result), color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
         else:
-            await msg.edit(embed=Embed(title="Script executed", color=Color.green(), description='Script executed successfully, the result, might be None or too long to fill in here.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await msg.edit(embed=Embed(title="Script executed", color=Color.green(), description='Script executed successfully, the result, might be `None` or too long to fill in here.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
 @tree.command(name='update', description='OWNER ONLY - update bot repo', guild=Object(id=configurations.owner_guild_id))
 async def update_bot(interaction: Interaction, ephemeral: bool = True):
