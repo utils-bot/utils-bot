@@ -38,7 +38,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.1.13b' # ignore
+    bot_version = 'v0.1.13c' # ignore
 
 intents = Intents.default()
 intents.members = True
@@ -230,7 +230,7 @@ async def set_bot_avatar(interaction: Interaction, url: str = ''):
 
 # @tree.command(name = 'bot_avatar', description='OWNER ONLY - Change the bot avatar with a png link or a image')
 
-@tree.command(name = 'maintenance', description='OWNER ONLY - Toggle maintenance mode for supported commands')
+@tree.command(name = 'maintenance', description='OWNER ONLY - Toggle maintenance mode for supported commands', guild=Object(id=configurations.owner_guild_id))
 @app_commands.describe(status_to_set = 'Status of maintenance to set into the database')
 async def maintenance(interaction: Interaction, status_to_set: bool = False):
     await interaction.response.defer(ephemeral = True)
