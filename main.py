@@ -38,7 +38,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 5
     default_maintenance_status = False
-    bot_version = 'v0.1.13' # ignore
+    bot_version = 'v0.1.13a' # ignore
 
 intents = Intents.default()
 intents.members = True
@@ -327,7 +327,7 @@ async def on_ready():
     ilog(f"Bot is currently on version {configurations.bot_version}", 'init', 'info')
     ilog(str(client.user) + ' has connected to Discord.', 'init', 'info')
     ilog('Connected to ' + str(len(client.guilds)) + ' guilds and ' + str(len(client.guilds)) + ' users.', 'init', 'info' )
-    await client.change_presence(activity=Game('utils-bot'), status=Status.online)
+    await client.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
 """
 -------------------------------------------------
 BOOT
