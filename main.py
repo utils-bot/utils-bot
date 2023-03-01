@@ -38,11 +38,11 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.1.13c' # ignore
+    bot_version = 'v0.1.13d' # ignore
 
 intents = Intents.default()
 intents.members = True
-intents.message_content = True
+# intents.message_content = True
 client = Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
@@ -124,7 +124,7 @@ async def sync(interaction: Interaction, ephemeral: bool = False):
         await interaction.followup.send(embed=Embed(title="Command tree synced", color=Color.green(), description='Successfully synced the global command tree to all guilds', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
         await client.change_presence(activity=Game('synced. reloading...'), status=Status.dnd)
         sleep(2)
-        await client.change_presence(activity=Game('utils-bot'), status=Status.online)
+        await client.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
     except Exception as e:
         ilog('Exception in command /sync:' + e, logtype= 'error', flag = 'command')
         await interaction.followup.send(embed=Embed(title="Exception occurred", description=str(e), color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
