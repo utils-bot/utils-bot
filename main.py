@@ -36,9 +36,9 @@ class configurations:
     owner_ids = [806432782111735818]
     owner_guild_id = environ.get('owner_guild_id', 0)
     beta = True
-    max_global_ratelimit = 5
+    max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.1.13a' # ignore
+    bot_version = 'v0.1.13b' # ignore
 
 intents = Intents.default()
 intents.members = True
