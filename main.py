@@ -39,7 +39,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.1.15' # ignore
+    bot_version = 'v0.1.15x' # ignore
 
 intents = Intents.default()
 intents.members = True
@@ -342,15 +342,6 @@ async def on_ready():
     ilog('Connected to ' + str(len(client.guilds)) + ' guilds and ' + str(len(client.guilds)) + ' users.', 'init', 'info' )
     await client.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
 
-async def give_guest_role(ctx, member: Member):
-    guild = member.guild
-    role = guild.get_role(1070731737698672670) # replace with the ID of the Guest role
-    await member.add_roles(role)
-
-@client.event
-async def on_component(ctx):
-    if ctx.custom_id == "guest-role-button":
-        await give_guest_role(ctx, ctx.author)
 """
 -------------------------------------------------
 BOOT
