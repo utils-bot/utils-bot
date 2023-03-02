@@ -1,4 +1,4 @@
-from discord import app_commands, Intents, Client, Interaction, Object, Embed, File, Game, Status, Color, Member, Component
+from discord import app_commands, Intents, Client, Interaction, Object, Embed, File, Game, Status, Color, Member
 from discord.components import Button, ButtonStyle
 from selenium.webdriver.support import expected_conditions as EC
 from jsondb import get_whitelist, update_whitelist, beta_check, check_bot_version
