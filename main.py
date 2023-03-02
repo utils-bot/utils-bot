@@ -1,6 +1,6 @@
 from discord import app_commands, Intents, Client, Interaction, Object, Embed, File, Game, Status, Color, Member
 from selenium.webdriver.support import expected_conditions as EC
-from jsondb import get_whitelist, update_whitelist, beta_check
+from jsondb import get_whitelist, update_whitelist, beta_check, check_bot_version
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -38,7 +38,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.1.14a' # ignore
+    bot_version = 'v0.1.14b' # ignore
 
 intents = Intents.default()
 intents.members = True
@@ -109,7 +109,7 @@ async def sync(interaction: Interaction, ephemeral: bool = False):
         await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
         return
     
-    await interaction.followup.send(ephemeral=ephemeral, embed=Embed(color=Color.green(), title = 'Bot version:', description= f'Bot version {configurations.bot_version}', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+    await interaction.followup.send(ephemeral=ephemeral, embed=Embed(color=Color.green(), title = 'Bot version:', description= f'Bot version {configurations.bot_version} {"[outdated]" if check_bot_version(configurations.bot_version) else "[up-to-date]"}', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
 @tree.command(name='sync', description='OWNER ONLY - sync all commands to all guilds manually', guild=Object(id=configurations.owner_guild_id))
 async def sync(interaction: Interaction, ephemeral: bool = False):
