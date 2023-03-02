@@ -38,7 +38,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.1.14' # ignore
+    bot_version = 'v0.1.14a' # ignore
 
 intents = Intents.default()
 intents.members = True
@@ -66,7 +66,8 @@ def get_screenshot(url, window_height: int, window_width: int, delay: int):
 BASE COMMANDS
 -------------------------------------------------
 """  
-@tree.command(name='eval', description='OWNER ONLY - execute python scripts via eval()', guild=Object(id=configurations.owner_guild_id))
+# @tree.command(name='eval', description='OWNER ONLY - execute python scripts via eval()', guild=Object(id=configurations.owner_guild_id))
+@tree.command(name='eval', description='OWNER ONLY - execute python scripts via eval()')
 async def scripteval(interaction: Interaction, script: str, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
@@ -163,7 +164,8 @@ async def whitelist_list(interaction: Interaction, ephemeral: bool = False):
         ilog('Exception in command /whitelist_list:' + e, logtype= 'error', flag = 'command')
         await interaction.followup.send(embed=Embed(title="Exception occurred", description=str(e), color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
 
-@tree.command(name = 'whitelist_modify', description='OWNER ONLY - Modify beta whitelist list in database.json', guild=Object(id=configurations.owner_guild_id))
+# @tree.command(name = 'whitelist_modify', description='OWNER ONLY - Modify beta whitelist list in database.json', guild=Object(id=configurations.owner_guild_id))
+@tree.command(name = 'whitelist_modify', description='OWNER ONLY - Modify beta whitelist list in database.json')
 @app_commands.describe(user = 'User that will be modified in the whitelist database', add = 'Mode to modify, True = add / False = remove')
 async def whitelist_modify(interaction: Interaction, user: Member, add: bool = True, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
