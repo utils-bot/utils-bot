@@ -39,7 +39,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.1.15x' # ignore
+    bot_version = 'v0.1.16' # ignore
 
 intents = Intents.default()
 intents.members = True
@@ -53,7 +53,7 @@ async def antiblock(blocking_func: typing.Callable, *args, **kwargs) -> typing.A
 
 def get_screenshot(url, window_height: int, window_width: int, delay: int):
     options = Options()
-    for arg in ['--no-sandbox', '--disable-dev-shm-usage', '--headless', '--disable-gpu', '--window-position=0,0', f'--window-size={window_height},{window_width}']: options.add_argument(arg)
+    for arg in ['--no-sandbox', '--disable-dev-shm-usage', '--headless', '--disable-gpu', '--window-position=0,0', f'--window-size={window_height},{window_width}', '--enable-features=WebContentsForceDark']: options.add_argument(arg)
     with webdriver.Chrome(options=options) as driver:
         driver.get(url)
         wait = WebDriverWait(driver, 10)
