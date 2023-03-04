@@ -39,7 +39,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.1.17' # ignore
+    bot_version = 'v0.1.17a' # ignore
 
 intents = Intents.default()
 intents.members = True
@@ -306,16 +306,15 @@ class RockPaperScissorsUIView(ui.View):
     def __init__(self, interaction: Interaction):
         super().__init__()
         self.interaction = interaction
-    
     @ui.button(label='Rock 👊')
     async def rock(self, interaction: Interaction, button: ui.Button):
-        await self.play('rock')
+        await self.play(interaction, choice = 'rock')
     @ui.button(label='Paper 📃')
     async def paper(self, interaction: Interaction, button: ui.Button):
-        await self.play('paper')
+        await self.play(interaction, choice = 'paper')
     @ui.button(label='Scissors ✂')
     async def scissors(self, interaction: Interaction, button: ui.Button):
-        await self.play('scissors')
+        await self.play(interaction, choice = 'scissors')
     
     async def play(interaction: Interaction, choice: str) -> None:
         computer_choice = choice(['rock', 'paper', 'scissors'])
