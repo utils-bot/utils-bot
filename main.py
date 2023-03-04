@@ -39,7 +39,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.1.17b1' # ignore
+    bot_version = 'v0.1.17c' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -318,10 +318,10 @@ class RockPaperScissorsUIView(ui.View):
     async def scissors(self, interaction: Interaction, button: ui.Button):
         await self.play(choice = 'scissors')
     
-    async def play(interaction: Interaction, choice: str) -> None:
+    async def play(interaction: Interaction, user_choice: str) -> None:
         computer_choice = choice(['rock', 'paper', 'scissors'])
-        win_ = (choice == 'rock' and computer_choice == 'scissors') or (choice == 'paper' and computer_choice == 'rock') or (choice == 'scissors' and computer_choice == 'paper')
-        tie_ = choice == computer_choice
+        win_ = (user_choice == 'rock' and computer_choice == 'scissors') or (user_choice == 'paper' and computer_choice == 'rock') or (user_choice == 'scissors' and computer_choice == 'paper')
+        tie_ = user_choice == computer_choice
         result = 'win 😊! How lucky are you!' if win_ else 'tie 😐! Well played!' if tie_ else 'lose 😞! Better luck next time...'
         await interaction.followup.send(embed=Embed(color = Color.red() if win_ else Color.blue() if tie_ else Color.red(), title = 'Rock Paper Scissors', description= f'You {result}').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
@@ -400,4 +400,4 @@ if __name__ == '__main__':
     else:
         with open('version.json', 'w+') as f:
             json.dump({'current_version': configurations.bot_version}, f)
-            ilog('Finished updating version.', 'build', 'info')
+            ilog(f'Finished updating version to {configurations.bot_version}', 'build', 'info')
