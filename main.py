@@ -39,7 +39,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.1.17d' # ignore
+    bot_version = 'v0.1.17e' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -318,7 +318,8 @@ class RockPaperScissorsUIView(ui.View):
     async def scissors(self, interaction: Interaction, button: ui.Button):
         await self.play('scissors')
     
-    async def play(interaction: Interaction, user_choice: str) -> None:
+    async def play(self, user_choice: str) -> None:
+        interaction = self.interaction
         computer_choice = choice(['rock', 'paper', 'scissors'])
         win_ = (user_choice == 'rock' and computer_choice == 'scissors') or (user_choice == 'paper' and computer_choice == 'rock') or (user_choice == 'scissors' and computer_choice == 'paper')
         tie_ = user_choice == computer_choice
