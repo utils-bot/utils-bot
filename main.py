@@ -39,7 +39,8 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.1.17a' # ignore
+    bot_version = 'v0.1.17b1' # ignore
+    not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
 intents.members = True
@@ -105,6 +106,7 @@ async def update_bot(interaction: Interaction, ephemeral: bool = False):
         return
     
     try:
+        ilog("Updating git repo...", 'git', 'warning')
         system('git fetch --all')
         system('git reset --hard origin/main')
     except Exception as e:
@@ -308,13 +310,13 @@ class RockPaperScissorsUIView(ui.View):
         self.interaction = interaction
     @ui.button(label='Rock 👊')
     async def rock(self, interaction: Interaction, button: ui.Button):
-        await self.play(interaction, choice = 'rock')
+        await self.play(choice = 'rock')
     @ui.button(label='Paper 📃')
     async def paper(self, interaction: Interaction, button: ui.Button):
-        await self.play(interaction, choice = 'paper')
+        await self.play(choice = 'paper')
     @ui.button(label='Scissors ✂')
     async def scissors(self, interaction: Interaction, button: ui.Button):
-        await self.play(interaction, choice = 'scissors')
+        await self.play(choice = 'scissors')
     
     async def play(interaction: Interaction, choice: str) -> None:
         computer_choice = choice(['rock', 'paper', 'scissors'])
@@ -390,6 +392,12 @@ async def on_ready():
 BOOT
 -------------------------------------------------
 """
+build = not configurations.not_builder
 if __name__ == '__main__':
-    ka()
-    client.run(configurations.bot_token)
+    if not build:
+        ka()
+        client.run(configurations.bot_token)
+    else:
+        with open('version.json', 'w+') as f:
+            json.dump({'current_version': configurations.bot_version}, f)
+            ilog('Finished updating version.', 'build', 'info')
