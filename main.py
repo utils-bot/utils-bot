@@ -39,7 +39,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.1.17e' # ignore
+    bot_version = 'v0.1.17f' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -63,6 +63,10 @@ def get_screenshot(url, window_height: int, window_width: int, delay: int):
         image_bytes = driver.get_screenshot_as_png()
     return image_bytes
 
+def build_mode():
+    with open('version.json', 'w+') as f:
+            json.dump({'current_version': configurations.bot_version}, f)
+            ilog(f'Finished updating version to {configurations.bot_version}', 'build', 'info')
 """
 -------------------------------------------------
 BASE COMMANDS
@@ -323,8 +327,8 @@ class RockPaperScissorsUIView(ui.View):
         computer_choice = choice(['rock', 'paper', 'scissors'])
         win_ = (user_choice == 'rock' and computer_choice == 'scissors') or (user_choice == 'paper' and computer_choice == 'rock') or (user_choice == 'scissors' and computer_choice == 'paper')
         tie_ = user_choice == computer_choice
-        result = 'win 😊! How lucky are you!' if win_ else 'tie 😐! Well played!' if tie_ else 'lose 😞! Better luck next time...'
-        await interaction.followup.send(embed=Embed(color = Color.red() if win_ else Color.blue() if tie_ else Color.red(), title = 'Rock Paper Scissors', description= f'You {result}').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+        result = 'win 😊 How lucky are you!' if win_ else 'tie 😐 Well played!' if tie_ else 'lose 😞 Better luck next time...'
+        await interaction.followup.send(embed=Embed(color = Color.red() if win_ else Color.blue() if tie_ else Color.red(), title = 'Rock Paper Scissors', description= f'Bot chose {computer_choice}. You {result}').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
 @tree.command(name = 'rps', description= 'BETA - Play Rock Paper Scissors, this is a test for discord buttons.')
 @app_commands.describe(ephemeral = 'Share your play result with people in the guild, defaulting to True.')
@@ -396,9 +400,10 @@ BOOT
 build = not configurations.not_builder
 if __name__ == '__main__':
     if not build:
+        ilog('Starting flask keep-alive server...', 'init', 'info')
         ka()
+        ilog('Starting Discord client...', 'init', 'info')
         client.run(configurations.bot_token)
     else:
-        with open('version.json', 'w+') as f:
-            json.dump({'current_version': configurations.bot_version}, f)
-            ilog(f'Finished updating version to {configurations.bot_version}', 'build', 'info')
+        ilog('Running build mode', 'build', 'info')
+        build_mode()
