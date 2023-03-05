@@ -141,7 +141,7 @@ async def sync(interaction: Interaction, ephemeral: bool = False):
         return
     try:
         await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
-        tree.copy_global_to()
+        tree.copy_global_to(guild = Object(id = configurations.owner_guild_id))
         await tree.sync()
         ilog(f'[+] Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}', logtype = 'info', flag = 'tree')
         await interaction.followup.send(embed=Embed(title="Command tree synced", color=Color.green(), description='Successfully synced the global command tree to all guilds', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
