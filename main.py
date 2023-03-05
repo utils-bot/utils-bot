@@ -39,7 +39,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2.1a' # ignore
+    bot_version = 'v0.2.1b' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -107,7 +107,7 @@ async def scripteval(interaction: Interaction, script: str, ephemeral: bool = Fa
         else:
             await msg.edit(embed=Embed(title="Script executed", color=Color.green(), description='Script executed successfully, the result, might be `None` or too long to fill in here.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
-@grp.command(name='update', description='update bot repo', )
+@grp.command(name='update', description='update bot repo')
 async def update_bot(interaction: Interaction, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
@@ -124,7 +124,7 @@ async def update_bot(interaction: Interaction, ephemeral: bool = False):
     else:
         await interaction.followup.send(embed=Embed(title="Done", color=Color.green(), description='Successfully updated the bot repo on Github.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
 
-@grp.command(name='version', description='check the code version', )
+@grp.command(name='version', description='check the code version')
 async def version(interaction: Interaction, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
@@ -133,7 +133,7 @@ async def version(interaction: Interaction, ephemeral: bool = False):
     
     await interaction.followup.send(ephemeral=ephemeral, embed=Embed(color=Color.green(), title = 'Bot version:', description= f'Bot version {configurations.bot_version} {"[outdated]" if not check_bot_version(configurations.bot_version) else "[up-to-date]"}', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
-@tree.command(name='sync', description='sync all commands to all guilds manually', )
+@tree.command(name='sync', description='sync all commands to all guilds manually')
 async def sync(interaction: Interaction, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
@@ -152,7 +152,7 @@ async def sync(interaction: Interaction, ephemeral: bool = False):
         ilog('Exception in command /sync:' + e, logtype= 'error', flag = 'command')
         await interaction.followup.send(embed=Embed(title="Exception occurred", description=str(e), color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
 
-@grp.command(name='restartbot', description='Restart the bot', )
+@grp.command(name='restartbot', description='Restart the bot')
 async def restartbot(interaction: Interaction, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
@@ -166,7 +166,7 @@ async def restartbot(interaction: Interaction, ephemeral: bool = False):
     sleep(5)
     system('kill 1')
 
-@grp.command(name = 'whitelist_list', description ='Get beta whitelist list in database.json', )
+@grp.command(name = 'whitelist_list', description ='Get beta whitelist list in database.json')
 async def whitelist_list(interaction: Interaction, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
@@ -200,7 +200,7 @@ async def whitelist_modify(interaction: Interaction, user: Member, add: bool = T
         ilog('Exception in command /whitelist_modify:' + e, logtype= 'error', flag = 'command')
         await interaction.followup.send(ephemeral= True, embed=Embed(title="Exception occurred", description=str(e), color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
-@grp.command(name = 'maintenance', description='Toggle maintenance mode for supported commands', )
+@grp.command(name = 'maintenance', description='Toggle maintenance mode for supported commands')
 @app_commands.describe(status_to_set = 'Status of maintenance to set into the database')
 async def maintenance(interaction: Interaction, status_to_set: bool = False):
     await interaction.response.defer(ephemeral = True)
