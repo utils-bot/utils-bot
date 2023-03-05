@@ -39,7 +39,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2' # ignore
+    bot_version = 'v0.2.1' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -125,7 +125,7 @@ async def update_bot(interaction: Interaction, ephemeral: bool = False):
         await interaction.followup.send(embed=Embed(title="Done", color=Color.green(), description='Successfully updated the bot repo on Github.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
 
 @grp.command(name='version', description='check the code version', )
-async def sync(interaction: Interaction, ephemeral: bool = False):
+async def version(interaction: Interaction, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
         await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
@@ -213,6 +213,7 @@ async def maintenance(interaction: Interaction, status_to_set: bool = False):
     await interaction.followup.send(embed=Embed(color=Color.green(), title='Success', description=f'Maintenance status changed: {old} -> {maintenance_status}', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
 tree.add_command(grp)
+
 """
 -------------------------------------------------
 FEATURE COMMANDS (beta)
