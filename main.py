@@ -39,7 +39,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2.1' # ignore
+    bot_version = 'v0.2.1a' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -88,7 +88,7 @@ system
 
 grp = app_commands.Group(name="system", description="OWNER ONLY - System commands", guild_ids=[configurations.owner_guild_id])
 
-@grp.command(name='eval', description='execute python scripts via eval()')
+@tree.command(name='eval', description='execute python scripts via eval()')
 async def scripteval(interaction: Interaction, script: str, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
