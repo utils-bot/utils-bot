@@ -40,7 +40,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2.1d' # ignore
+    bot_version = 'v0.2.1e' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -187,7 +187,7 @@ async def whitelist_list(interaction: Interaction, ephemeral: bool = False):
 
 # @tree.command(name = 'whitelist_modify', description='Modify beta whitelist list in database.json', )
 @tree.command(name = 'whitelist_modify', description='system - Modify beta whitelist list in database.json')
-@app_commands.describe(user = 'User that will be modified in the whitelist database', add = 'Mode to modify, True = add / False = remove')
+@app_commands.describe(user = 'User that will be modified in the whitelist database', mode = 'Mode to modify, True = add / False = remove')
 async def whitelist_modify(interaction: Interaction, user: Member, mode: typing.Literal['add', 'remove'] = 'add', ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
@@ -196,7 +196,7 @@ async def whitelist_modify(interaction: Interaction, user: Member, mode: typing.
     
     try:
         update_status = update_whitelist(id = user.id, add = mode == 'add')
-        await interaction.followup.send(embed=Embed(title='Done', description=f'Successfully {"added" if bool else "removed"} this user in the list: {user.mention} ({user.id})', color = Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar) if update_status else Embed(title='Failed', description='A error occured', color = Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
+        await interaction.followup.send(embed=Embed(title='Done', description=f'Successfully {"added" if mode == "add" else "removed"} this user in the list: {user.mention} ({user.id})', color = Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar) if update_status else Embed(title='Failed', description='A error occured', color = Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
     except Exception as e:
         ilog('Exception in command /whitelist_modify:' + e, logtype= 'error', flag = 'command')
         await interaction.followup.send(ephemeral= True, embed=Embed(title="Exception occurred", description=str(e), color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
