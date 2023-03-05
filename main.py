@@ -264,7 +264,7 @@ async def screenshot(interaction: Interaction, url: str, delay: int = 0, resolut
             await interaction.followup.send(embed = Embed(title='Error', description='Exception occurred, we are trying to fix asap', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
     global_ratelimit += -1
 
-class RockPaperScissorsUIView(ui.View):
+"""class RockPaperScissorsUIView(ui.View):
     def __init__(self, interaction: Interaction):
         super().__init__()
         self.interaction = interaction
@@ -301,7 +301,7 @@ async def rps(interaction: Interaction, ephemeral: bool = True):
         return
     view = RockPaperScissorsUIView(interaction)
     await interaction.followup.send(embed=Embed(title='Rock Paper Scissors', description='Choose your move:', color=Color.red(), timestamp=datetime.now()).set_footer(text=f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), view=view)
-    
+    """
 
 """
 -------------------------------------------------
