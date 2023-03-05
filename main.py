@@ -39,7 +39,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.1.17f' # ignore
+    bot_version = 'v0.2' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -65,25 +65,30 @@ def get_screenshot(url, window_height: int, window_width: int, delay: int):
 
 def build_mode():
     with open('version.json', 'w+') as f:
-            json.dump({'current_version': configurations.bot_version}, f)
-            ilog(f'Finished updating version to {configurations.bot_version}', 'build', 'info')
-"""
--------------------------------------------------
+        json.dump({'current_version': configurations.bot_version}, f)
+        ilog(f'Finished updating version to {configurations.bot_version}', 'build', 'info')
+    with open('pc.py', 'wb+') as fw, open('main.py', 'rb') as fr:
+        fw.write(fr.read())
+        ilog(f'Finished making pc.py file that you can input your own shit', 'build', 'info')
+
+"""-------------------------------------------------
 BASE COMMANDS
-* owner guild only:
-/update
-/version
-/sync
-/restartbot
-/whitelist_list
-/maintenance
-* globally:
-/eval
-/whitelist_modify
--------------------------------------------------
-"""  
-# @tree.command(name='eval', description='OWNER ONLY - execute python scripts via eval()', guild=Object(id=configurations.owner_guild_id))
-@tree.command(name='eval', description='OWNER ONLY - execute python scripts via eval()')
+
+system
+|--update
+|--version
+|--sync
+|--restartbot
+|--whitelist_list
+|--maintenance
+|
+|--eval
+|--whitelist_modify
+-------------------------------------------------""" 
+
+grp = app_commands.Group(name="system", description="OWNER ONLY - System commands", guild_ids=[configurations.owner_guild_id])
+
+@grp.command(name='eval', description='execute python scripts via eval()')
 async def scripteval(interaction: Interaction, script: str, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
@@ -102,7 +107,7 @@ async def scripteval(interaction: Interaction, script: str, ephemeral: bool = Fa
         else:
             await msg.edit(embed=Embed(title="Script executed", color=Color.green(), description='Script executed successfully, the result, might be `None` or too long to fill in here.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
-@tree.command(name='update', description='OWNER ONLY - update bot repo', guild=Object(id=configurations.owner_guild_id))
+@grp.command(name='update', description='update bot repo', )
 async def update_bot(interaction: Interaction, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
@@ -119,7 +124,7 @@ async def update_bot(interaction: Interaction, ephemeral: bool = False):
     else:
         await interaction.followup.send(embed=Embed(title="Done", color=Color.green(), description='Successfully updated the bot repo on Github.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
 
-@tree.command(name='version', description='OWNER ONLY - check the code version', guild=Object(id=configurations.owner_guild_id))
+@grp.command(name='version', description='check the code version', )
 async def sync(interaction: Interaction, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
@@ -128,7 +133,7 @@ async def sync(interaction: Interaction, ephemeral: bool = False):
     
     await interaction.followup.send(ephemeral=ephemeral, embed=Embed(color=Color.green(), title = 'Bot version:', description= f'Bot version {configurations.bot_version} {"[outdated]" if not check_bot_version(configurations.bot_version) else "[up-to-date]"}', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
-@tree.command(name='sync', description='OWNER ONLY - sync all commands to all guilds manually', guild=Object(id=configurations.owner_guild_id))
+@grp.command(name='sync', description='sync all commands to all guilds manually', )
 async def sync(interaction: Interaction, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
@@ -136,7 +141,7 @@ async def sync(interaction: Interaction, ephemeral: bool = False):
         return
     try:
         await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
-        tree.copy_global_to(guild=Object(id=configurations.owner_guild_id))
+        tree.copy_global_to()
         await tree.sync()
         ilog(f'[+] Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}', logtype = 'info', flag = 'tree')
         await interaction.followup.send(embed=Embed(title="Command tree synced", color=Color.green(), description='Successfully synced the global command tree to all guilds', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
@@ -147,9 +152,7 @@ async def sync(interaction: Interaction, ephemeral: bool = False):
         ilog('Exception in command /sync:' + e, logtype= 'error', flag = 'command')
         await interaction.followup.send(embed=Embed(title="Exception occurred", description=str(e), color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
 
-
-
-@tree.command(name='restartbot', description='OWNER ONLY - Restart the bot', guild=Object(id=configurations.owner_guild_id))
+@grp.command(name='restartbot', description='Restart the bot', )
 async def restartbot(interaction: Interaction, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
@@ -163,7 +166,7 @@ async def restartbot(interaction: Interaction, ephemeral: bool = False):
     sleep(5)
     system('kill 1')
 
-@tree.command(name = 'whitelist_list', description ='OWNER ONLY - Get beta whitelist list in database.json', guild=Object(id=configurations.owner_guild_id))
+@grp.command(name = 'whitelist_list', description ='Get beta whitelist list in database.json', )
 async def whitelist_list(interaction: Interaction, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
@@ -181,8 +184,8 @@ async def whitelist_list(interaction: Interaction, ephemeral: bool = False):
         ilog('Exception in command /whitelist_list:' + e, logtype= 'error', flag = 'command')
         await interaction.followup.send(embed=Embed(title="Exception occurred", description=str(e), color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
 
-# @tree.command(name = 'whitelist_modify', description='OWNER ONLY - Modify beta whitelist list in database.json', guild=Object(id=configurations.owner_guild_id))
-@tree.command(name = 'whitelist_modify', description='OWNER ONLY - Modify beta whitelist list in database.json')
+# @tree.command(name = 'whitelist_modify', description='Modify beta whitelist list in database.json', )
+@grp.command(name = 'whitelist_modify', description='Modify beta whitelist list in database.json')
 @app_commands.describe(user = 'User that will be modified in the whitelist database', add = 'Mode to modify, True = add / False = remove')
 async def whitelist_modify(interaction: Interaction, user: Member, add: bool = True, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
@@ -197,56 +200,7 @@ async def whitelist_modify(interaction: Interaction, user: Member, add: bool = T
         ilog('Exception in command /whitelist_modify:' + e, logtype= 'error', flag = 'command')
         await interaction.followup.send(ephemeral= True, embed=Embed(title="Exception occurred", description=str(e), color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
-
-# @tree.command(name = 'bot_avatar', description='OWNER ONLY - Change the bot avatar with a png link or a image')
-"""async def set_bot_avatar(interaction: Interaction, url: str = ''):
-    # Check if the user provided an attachment
-    if len(interaction.message.attachments) > 0:
-        attachment = interaction.message.attachments[0]
-        if attachment.content_type.startswith('image/'):
-            avatar_bytes = await attachment.read()
-            avatar_file = BytesIO(avatar_bytes)
-            try:
-                await client.user.edit(avatar=avatar_file.read())
-                embed = Embed(title='Bot Avatar Changed', 
-                              description='The bot avatar has been changed successfully!', 
-                              color=Color.green())
-            except Exception as e:
-                embed = Embed(title='Error', 
-                              description=f'Failed to change bot avatar: {str(e)}', 
-                              color=Color.red())
-        else:
-            embed = Embed(title='Error', 
-                          description='Please provide an image file as an attachment!', 
-                          color=Color.red())
-    # If no attachment was provided, try to fetch the image from the provided URL
-    elif url != '':
-        try:
-            response = requests.get(url)
-            if response.status_code == 200 and response.headers.get('content-type', '').startswith('image/'):
-                avatar_bytes = response.content
-                avatar_file = BytesIO(avatar_bytes)
-                await client.user.edit(avatar=avatar_file.read())
-                embed = Embed(title='Bot Avatar Changed', 
-                              description='The bot avatar has been changed successfully!', 
-                              color=Color.green())
-            else:
-                embed = Embed(title='Error', 
-                              description='Please provide a valid image URL!', 
-                              color=Color.red())
-        except Exception as e:
-            embed = Embed(title='Error', 
-                          description=f'Failed to change bot avatar: {str(e)}', 
-                          color=Color.red())
-    else:
-        embed = Embed(title='Error', 
-                      description='Please provide an image file as an attachment or a valid image URL!', 
-                      color=Color.red())
-
-    await interaction.send(embed=embed)
-"""
-
-@tree.command(name = 'maintenance', description='OWNER ONLY - Toggle maintenance mode for supported commands', guild=Object(id=configurations.owner_guild_id))
+@grp.command(name = 'maintenance', description='Toggle maintenance mode for supported commands', )
 @app_commands.describe(status_to_set = 'Status of maintenance to set into the database')
 async def maintenance(interaction: Interaction, status_to_set: bool = False):
     await interaction.response.defer(ephemeral = True)
@@ -258,6 +212,7 @@ async def maintenance(interaction: Interaction, status_to_set: bool = False):
     maintenance_status = status_to_set
     await interaction.followup.send(embed=Embed(color=Color.green(), title='Success', description=f'Maintenance status changed: {old} -> {maintenance_status}', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
+tree.add_command(grp)
 """
 -------------------------------------------------
 FEATURE COMMANDS (beta)
@@ -289,7 +244,7 @@ async def screenshot(interaction: Interaction, url: str, delay: int = 0, resolut
         await interaction.followup.send(embed=Embed(color=Color.red(), title='Rate-limited', description='Bot is currently global rate-limited, please try again later', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral= True)
         return
     i = resolution.split(':')
-    if len(i) != 2 or (len(i) == 2 and all(isinstance(k, int) for k in i)):
+    if len(i) != 2: # or (len(i) == 2 and all(isinstance(k, int) for k in i)):
         await interaction.followup.send(embed=Embed(title='Error', description='Invalid resolution format. Must be str(int:int). For example "1920:1080"/"123:456"', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
         return
     sleep(2)
@@ -385,7 +340,7 @@ async def on_ready():
     await client.change_presence(activity=Game('starting...'), status=Status.dnd)
     sleep(2)
     ilog("Syncing commands to the owner guild...", 'init', 'info')
-    await tree.sync(guild=Object(id=configurations.owner_guild_id))
+    await tree.sync()
     ilog("Done! bot is now ready!", 'init', 'info')
     ilog(f"Bot is currently on version {configurations.bot_version}", 'init', 'info')
     ilog(str(client.user) + ' has connected to Discord.', 'init', 'info')
