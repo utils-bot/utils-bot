@@ -222,7 +222,7 @@ FEATURE COMMANDS (beta)
 -------------------------------------------------
 """
 @tree.command(name='screenshot', description='BETA - Take a screenshot of a website')
-@app_commands.describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s)', resolution = 'Resolution of the driver window. Format height:width', ephemeral = 'if you want to public the bot response to all users, make this True, else False.')
+@app_commands.describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s)', resolution = '(Will be overwritten if you are not botadmin.) Resolution of the driver window. Format height:width', ephemeral = 'if you want to public the bot response to all users, make this True, else False.')
 async def screenshot(interaction: Interaction, url: str, delay: int = 0, resolution: str = '1280:720', ephemeral: bool = False):
     global global_ratelimit
     await interaction.response.defer(ephemeral = ephemeral)
