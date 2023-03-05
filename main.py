@@ -39,7 +39,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2.1b' # ignore
+    bot_version = 'v0.2.1c' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -227,7 +227,7 @@ async def screenshot(interaction: Interaction, url: str, delay: int = 0, resolut
     global global_ratelimit
     await interaction.response.defer(ephemeral = ephemeral)
     # conditions to stop executing the command
-    if not beta_check(user = interaction.user.id, beta_bool = configurations.beta) or not interaction.user.id in configurations.owner_ids:
+    if not (beta_check(user = interaction.user.id, beta_bool = configurations.beta)) and (not interaction.user.id in configurations.owner_ids):
         await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
         return
     if interaction.guild_id is None:
