@@ -38,7 +38,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2.2a' # ignore
+    bot_version = 'v0.2.2b' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -89,6 +89,7 @@ system
 @tree.error
 async def on_error(interaction: Interaction, error):
     err = traceback.format_exc()
+    err = err if len(err) < 1000 else 'Check console for more information.'
     ilog('Exception in a application command: ' + err, logtype= 'error', flag = 'command')
     await interaction.followup.send(embed=Embed(title="Exception occurred", description=err, color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
