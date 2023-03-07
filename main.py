@@ -177,9 +177,9 @@ async def guilds(interaction: Interaction, ephemeral: bool = True):
     if len(k:=client.guilds) <= 30:
         current_list = ""
         for i in k:
-            current_list += f'({i.id}) {i.name}\n'
+            current_list += f'{i.id}: {i.name}\n'
     else:
-        current_list = "<too many guilds.>"
+        current_list = "<too many guilds>"
     embed.add_field(name = 'Guilds:', value = f"```{current_list}```")
     await interaction.followup.send(embed=embed, ephemeral=ephemeral)
 
