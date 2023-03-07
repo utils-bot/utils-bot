@@ -34,11 +34,11 @@ DEFINING VARS
 class configurations:
     bot_token = environ.get('bot_token') 
     owner_ids = [806432782111735818]
-    owner_guild_id = environ.get('owner_guild_id')
+    owner_guild_id = environ.get('owner_guild_id', 0)
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2.2d' # ignore
+    bot_version = 'v0.2.2e' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -107,7 +107,8 @@ async def scripteval(interaction: Interaction, script: str, ephemeral: bool = Fa
         await interaction.followup.send(embed=Embed(title="Script executed", color=Color.green(), description='Script executed successfully, the result, might be `None` or too long to fill in here.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
     else:
         await interaction.followup.send(embed=Embed(title="Result", description= "-> " + str(result), color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
-@tree.command(name='update', description='system - update bot repo')
+
+@tree.command(name='update', description='system - update bot repo', guild=Object(id=configurations.owner_guild_id))
 async def update_bot(interaction: Interaction, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
@@ -120,7 +121,7 @@ async def update_bot(interaction: Interaction, ephemeral: bool = False):
     
     await interaction.followup.send(embed=Embed(title="Done", color=Color.green(), description='Successfully updated the bot repo on Github.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
 
-@tree.command(name='version', description='system - check the code version')
+@tree.command(name='version', description='system - check the code version', guild=Object(id=configurations.owner_guild_id))
 async def version(interaction: Interaction, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
@@ -129,7 +130,7 @@ async def version(interaction: Interaction, ephemeral: bool = False):
     
     await interaction.followup.send(ephemeral=ephemeral, embed=Embed(color=Color.green(), title = 'Bot version:', description= f'Bot version {configurations.bot_version} {"[outdated]" if not check_bot_version(configurations.bot_version) else "[up-to-date]"}', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
-@tree.command(name='sync', description='system - sync all commands to all guilds manually')
+@tree.command(name='sync', description='system - sync all commands to all guilds manually', guild=Object(id=configurations.owner_guild_id))
 async def sync(interaction: Interaction, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
@@ -145,21 +146,21 @@ async def sync(interaction: Interaction, ephemeral: bool = False):
     sleep(2)
     await client.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
 
-@tree.command(name='restartbot', description='system - Restart the bot')
+@tree.command(name='restart', description='system - Restart the bot', guild=Object(id=configurations.owner_guild_id))
 async def restartbot(interaction: Interaction, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
         await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.discriminator), ephemeral=ephemeral)
         return
 
-    await interaction.followup.send(embed=Embed(title="Received", description="system - Restart request received, killing docker container...", color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
+    await interaction.followup.send(embed=Embed(title="Received", description="Restart request received, killing docker container...", color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
     ilog(f'[+] Restart request by {interaction.user.id} ({interaction.user.display_name})', 'command', 'info')
     ilog('Restarting...', 'system', 'critical')
     await client.change_presence(status=Status.dnd, activity=Game('restarting...'))
     sleep(5)
     system('kill 1')
 
-@tree.command(name = 'whitelist_list', description ='system - Get beta whitelist list in database.json')
+@tree.command(name = 'whitelist_list', description ='system - Get beta whitelist list in database.json', guild=Object(id=configurations.owner_guild_id))
 async def whitelist_list(interaction: Interaction, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
@@ -174,7 +175,7 @@ async def whitelist_list(interaction: Interaction, ephemeral: bool = False):
     await interaction.followup.send(embed=embed, ephemeral=ephemeral)
 
 # @tree.command(name = 'whitelist_modify', description='Modify beta whitelist list in database.json', )
-@tree.command(name = 'whitelist_modify', description='system - Modify beta whitelist list in database.json')
+@tree.command(name = 'whitelist_modify', description='system - Modify beta whitelist list in database.json', guild=Object(id=configurations.owner_guild_id))
 @app_commands.describe(user = 'User that will be modified in the whitelist database', mode = 'Mode to modify, True = add / False = remove')
 async def whitelist_modify(interaction: Interaction, user: Member, mode: typing.Literal['add', 'remove'] = 'add', ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
@@ -189,7 +190,7 @@ async def whitelist_modify(interaction: Interaction, user: Member, mode: typing.
         ilog('Exception in command /whitelist_modify:' + e, logtype= 'error', flag = 'command')
         await interaction.followup.send(ephemeral= True, embed=Embed(title="Exception occurred", description=str(e), color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
-@tree.command(name = 'maintenance', description='Toggle maintenance mode for supported commands')
+@tree.command(name = 'maintenance', description='Toggle maintenance mode for supported commands', guild=Object(id=configurations.owner_guild_id))
 @app_commands.describe(status_to_set = 'Status of maintenance to set into the database')
 async def maintenance(interaction: Interaction, status_to_set: bool = False):
     await interaction.response.defer(ephemeral = True)
