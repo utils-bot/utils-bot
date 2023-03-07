@@ -38,7 +38,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2.4a' # ignore
+    bot_version = 'v0.2.4b' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -174,9 +174,9 @@ async def guilds(interaction: Interaction, ephemeral: bool = True):
         await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
         return
     embed = Embed(title = 'Guilds list:', description= 'Here is the list of guilds that have this bot in:')
-    if client.guilds <= 30:
+    if len(k:=client.guilds) <= 30:
         current_list = ""
-        for i in client.guilds:
+        for i in k:
             current_list += f'({i.id}) {i.name}\n'
     else:
         current_list = "<too many guilds.>"
