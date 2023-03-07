@@ -38,7 +38,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2.2e' # ignore
+    bot_version = 'v0.2.3' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -70,6 +70,20 @@ def build_mode():
         fw.write(fr.read())
         ilog(f'Finished making pc.py file that you can input your own shit', 'build', 'info')
 
+
+"""-------------------------------------------------
+APPLICATION ERROR HANDLER
+-------------------------------------------------"""
+@tree.error
+async def on_error(interaction: Interaction, error):
+    full_err = traceback.format_exc()
+    es = f"```...{full_err[-500:]}```"
+    if (i:=interaction.user.id) in configurations.owner_guild_id or i in get_whitelist():
+        ilog('Exception in a application command: ' + full_err, logtype= 'error', flag = 'command')
+        await interaction.followup.send(embed=Embed(title="Exception occurred", description= es, color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+    else:
+        await interaction.followup.send(embed=Embed(title="Exception occurred", description='Contact the bot owner(s) for more information.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+
 """-------------------------------------------------
 BASE COMMANDS
 
@@ -86,13 +100,6 @@ system
 -------------------------------------------------""" 
 
 # grp = app_commands.Group(name="system", description="OWNER ONLY - System commands", guild_ids=[configurations.owner_guild_id])
-@tree.error
-async def on_error(interaction: Interaction, error):
-    err = traceback.format_exc()
-    err = '```' + err + '```' if len(err) < 1000 else 'Check console for more information.'
-    ilog('Exception in a application command: ' + err, logtype= 'error', flag = 'command')
-    await interaction.followup.send(embed=Embed(title="Exception occurred", description=err, color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
-
 
 @tree.command(name='eval', description='system - execute python scripts via eval()')
 async def scripteval(interaction: Interaction, script: str, ephemeral: bool = False):
