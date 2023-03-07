@@ -38,7 +38,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2.4b' # ignore
+    bot_version = 'v0.2.4c' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -347,7 +347,7 @@ async def on_ready():
     await client.change_presence(activity=Game('starting...'), status=Status.dnd)
     sleep(2)
     ilog("Syncing commands to the owner guild...", 'init', 'info')
-    await tree.sync()
+    await tree.sync(guild=Object(id=configurations.owner_guild_id))
     ilog("Done! bot is now ready!", 'init', 'info')
     ilog(f"Bot is currently on version {configurations.bot_version}", 'init', 'info')
     ilog(str(client.user) + ' has connected to Discord.', 'init', 'info')
