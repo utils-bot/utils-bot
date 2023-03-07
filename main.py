@@ -78,11 +78,11 @@ APPLICATION ERROR HANDLER
 async def on_error(interaction: Interaction, error):
     full_err = traceback.format_exc()
     es = f"```...{full_err[-500:]}```"
-    if (i:=interaction.user.id) in configurations.owner_guild_id or i in get_whitelist():
-        ilog('Exception in a application command: ' + full_err, logtype= 'error', flag = 'command')
-        await interaction.followup.send(embed=Embed(title="Exception occurred", description= es, color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
-    else:
-        await interaction.followup.send(embed=Embed(title="Exception occurred", description='Contact the bot owner(s) for more information.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+    # if (i:=interaction.user.id) in configurations.owner_guild_id or i in get_whitelist():
+    ilog('Exception in a application command: ' + full_err, logtype= 'error', flag = 'command')
+    await interaction.followup.send(embed=Embed(title="Exception occurred", description= es, color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+    # else:
+        # await interaction.followup.send(embed=Embed(title="Exception occurred", description='Contact the bot owner(s) for more information.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
 """-------------------------------------------------
 BASE COMMANDS
@@ -335,7 +335,7 @@ async def on_ready():
     ilog("Done! bot is now ready!", 'init', 'info')
     ilog(f"Bot is currently on version {configurations.bot_version}", 'init', 'info')
     ilog(str(client.user) + ' has connected to Discord.', 'init', 'info')
-    ilog('Connected to ' + str(len(client.guilds)) + ' guilds and ' + str(len(client.guilds)) + ' users.', 'init', 'info' )
+    ilog('Connected to ' + str(len(client.guilds)) + ' guilds and ' + str(len(client.guilds)) + ' users.', 'init', 'info')
     await client.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
 
 """
