@@ -79,7 +79,7 @@ async def on_error(interaction: Interaction, error):
     full_err = traceback.format_exc()
     es = f"```...{full_err[-800:]}```"
     # if (i:=interaction.user.id) in configurations.owner_guild_id or i in get_whitelist():
-    ilog('Exception in a application command: ' + full_err, logtype= 'error', flag = 'command')
+    ilog('Exception in a application command: ' + full_err + '--------------------end of exception--------------------', logtype= 'error', flag = 'command')
     await interaction.followup.send(embed=Embed(title="Exception occurred", description= es, color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
     # else:
         # await interaction.followup.send(embed=Embed(title="Exception occurred", description='Contact the bot owner(s) for more information.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
