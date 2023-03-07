@@ -32,13 +32,13 @@ DEFINING VARS
 -------------------------------------------------
 """
 class configurations:
-    bot_token = environ.get('bot_token', '') 
+    bot_token = environ.get('bot_token') 
     owner_ids = [806432782111735818]
-    owner_guild_id = environ.get('owner_guild_id', (lambda: int(input('owner_guild_id: ')))())
+    owner_guild_id = environ.get('owner_guild_id')
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2.2' # ignore
+    bot_version = 'v0.2.2a' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
