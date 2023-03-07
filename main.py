@@ -38,7 +38,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2.4c' # ignore
+    bot_version = 'v0.2.4d' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -150,8 +150,8 @@ async def sync(interaction: Interaction, ephemeral: bool = False):
     ilog(f'Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}', logtype = 'info', flag = 'tree')
     await interaction.followup.send(embed=Embed(title="Command tree synced", color=Color.green(), description='Successfully synced the global command tree to all guilds', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
     await client.change_presence(activity=Game('synced. reloading...'), status=Status.dnd)
-    sleep(2)
-    await client.change_presence(activity=Game('version ' + configurations.bot_version + " [outdated]" if not check_bot_version(configurations.bot_version) else ""), status=Status.online)
+    sleep(5)
+    await client.change_presence(activity=Game('version ' + configurations.bot_version + ' [outdated]' if not check_bot_version(configurations.bot_version) else ""), status=Status.online)
 
 @tree.command(name='restart', description='system - Restart the bot', guild=Object(id=configurations.owner_guild_id))
 async def restartbot(interaction: Interaction, ephemeral: bool = False):
