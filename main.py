@@ -38,7 +38,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2.5a' # ignore
+    bot_version = 'v0.2.5b' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -51,14 +51,14 @@ async def antiblock(blocking_func: typing.Callable, *args, **kwargs) -> typing.A
     func = functools.partial(blocking_func, *args, **kwargs)
     return await client.loop.run_in_executor(None, func)
 
-async def get_screenshot(url, window_height: int, window_width: int, delay: int):
+async def get_screenshot(url, window_height: int, window_width: int, delay: int= 7):
     options = Options()
     for arg in ['--no-sandbox', '--disable-dev-shm-usage', '--headless', '--disable-gpu', '--window-position=0,0', f'--window-size={window_height},{window_width}', '--enable-features=WebContentsForceDark']: options.add_argument(arg)
     with webdriver.Chrome(options=options) as driver:
         driver.get(url)
         wait = WebDriverWait(driver, 10)
         wait.until(EC.presence_of_element_located((By.XPATH, "//body[not(@class='loading')]")))
-        asyncio.sleep(3 + delay)
+        await asyncio.sleep(3 + delay)
         image_bytes = driver.get_screenshot_as_png()
     return image_bytes
 
@@ -87,15 +87,17 @@ async def on_error(interaction: Interaction, error):
 """-------------------------------------------------
 BASE COMMANDS
 /sync
-/system
-|--update
-|--version
-|--restartbot
-|--whitelist_list
-|--maintenance
-|--guilds
-|--eval
-|--whitelist_modify
+/sys
+|-- eval
+|-- guilds
+|-- whitelist
+    |-- list
+    |-- modify
+/localsys
+|-- update
+|-- version
+|-- restart
+|-- maintenance
 -------------------------------------------------""" 
 
 @tree.command(name='sync', description='system - sync all commands to all guilds manually')#, guild=Object(id=configurations.owner_guild_id))
@@ -114,7 +116,7 @@ async def sync(interaction: Interaction, ephemeral: bool = False):
     sleep(5)
     await client.change_presence(activity=Game('version ' + configurations.bot_version + ' [outdated]' if not check_bot_version(configurations.bot_version) else ""), status=Status.online)
 
-class system(app_commands.Group):
+class sys(app_commands.Group):
     @app_commands.command(name='eval', description='system - execute python scripts via eval()')
     async def scripteval(self, interaction: Interaction, script: str, ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
@@ -128,7 +130,54 @@ class system(app_commands.Group):
             await interaction.followup.send(embed=Embed(title="Script executed", color=Color.green(), description='Script executed successfully, the result, might be `None` or too long to fill in here.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
         else:
             await interaction.followup.send(embed=Embed(title="Result", description= "```" + str(result) + "```", color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+    @app_commands.command(name = 'guilds', description= 'system - list guilds that the bot are currently in.')
+    async def guilds(self, interaction: Interaction, ephemeral: bool = True):
+        await interaction.response.defer(ephemeral=ephemeral)
+        if interaction.user.id not in configurations.owner_ids:
+            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
+            return
+        embed = Embed(title = 'Guilds list:', description= 'Here is the list of guilds that have this bot in:')
+        if len(k:=client.guilds) <= 30:
+            current_list = ""
+            for i in k:
+                current_list += f'{i.id}: {i.name}\n'
+        else:
+            current_list = "<too many guilds>"
+        embed.add_field(name = 'Guilds:', value = f"```{current_list}```")
+        await interaction.followup.send(embed=embed, ephemeral=ephemeral)
+    
+    whitelist = app_commands.Group(name='whitelist', description='Get and modify the beta whitelist in the database')
+    @whitelist.command(name = 'list', description ='system - Get beta whitelist list in whitelist.json')
+    async def whitelist_list(self, interaction: Interaction, ephemeral: bool = False):
+        await interaction.response.defer(ephemeral=ephemeral)
+        if interaction.user.id not in configurations.owner_ids:
+            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
+            return
 
+        embed = Embed(title='Whitelist list', description='Here is the list of beta-whitelisted user IDs:', color = Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
+        current_list = ""
+        for i in get_whitelist():
+            current_list += f'<@{i}> ({i})\n'
+        embed.add_field(name='Users:', value = current_list)
+        await interaction.followup.send(embed=embed, ephemeral=ephemeral)
+
+    # @tree.command(name = 'whitelist_modify', description='Modify beta whitelist list in database.json', )
+    @whitelist.command(name = 'modify', description='system - Modify beta whitelist list in database.json')
+    @app_commands.describe(user = 'User that will be modified in the whitelist database', mode = 'add/remove the user from the database')
+    async def whitelist_modify(self, interaction: Interaction, user: Member, mode: typing.Literal['add', 'remove'] = 'add', ephemeral: bool = False):
+        await interaction.response.defer(ephemeral=ephemeral)
+        if interaction.user.id not in configurations.owner_ids:
+            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
+            return
+        
+        try:
+            update_status = update_whitelist(id = user.id, add = mode == 'add')
+            await interaction.followup.send(embed=Embed(title='Done', description=f'Successfully {"added" if mode == "add" else "removed"} this user in the list: {user.mention} ({user.id})', color = Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar) if update_status else Embed(title='Failed', description='A error occured', color = Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
+        except Exception as e:
+            ilog('Exception in command /whitelist_modify:' + e, logtype= 'error', flag = 'command')
+            await interaction.followup.send(ephemeral= True, embed=Embed(title="Exception occurred", description=str(e), color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+
+class localsys(app_commands.Group):
     @app_commands.command(name='update', description='system - update bot repo')
     async def update_bot(self, interaction: Interaction, ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
@@ -165,52 +214,6 @@ class system(app_commands.Group):
         sleep(5)
         system('kill 1')
 
-    @app_commands.command(name = 'guilds', description= 'system - list guilds that the bot are currently in.')
-    async def guilds(self, interaction: Interaction, ephemeral: bool = True):
-        await interaction.response.defer(ephemeral=ephemeral)
-        if interaction.user.id not in configurations.owner_ids:
-            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
-            return
-        embed = Embed(title = 'Guilds list:', description= 'Here is the list of guilds that have this bot in:')
-        if len(k:=client.guilds) <= 30:
-            current_list = ""
-            for i in k:
-                current_list += f'{i.id}: {i.name}\n'
-        else:
-            current_list = "<too many guilds>"
-        embed.add_field(name = 'Guilds:', value = f"```{current_list}```")
-        await interaction.followup.send(embed=embed, ephemeral=ephemeral)
-
-    @app_commands.command(name = 'whitelist_list', description ='system - Get beta whitelist list in database.json')
-    async def whitelist_list(self, interaction: Interaction, ephemeral: bool = False):
-        await interaction.response.defer(ephemeral=ephemeral)
-        if interaction.user.id not in configurations.owner_ids:
-            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
-            return
-
-        embed = Embed(title='Whitelist list', description='Here is the list of beta-whitelisted user IDs:', color = Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
-        current_list = ""
-        for i in get_whitelist():
-            current_list += f'<@{i}> ({i})\n'
-        embed.add_field(name='Users:', value = current_list)
-        await interaction.followup.send(embed=embed, ephemeral=ephemeral)
-
-    # @tree.command(name = 'whitelist_modify', description='Modify beta whitelist list in database.json', )
-    @app_commands.command(name = 'whitelist_modify', description='system - Modify beta whitelist list in database.json')
-    @app_commands.describe(user = 'User that will be modified in the whitelist database', mode = 'add/remove the user from the database')
-    async def whitelist_modify(self, interaction: Interaction, user: Member, mode: typing.Literal['add', 'remove'] = 'add', ephemeral: bool = False):
-        await interaction.response.defer(ephemeral=ephemeral)
-        if interaction.user.id not in configurations.owner_ids:
-            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
-            return
-        
-        try:
-            update_status = update_whitelist(id = user.id, add = mode == 'add')
-            await interaction.followup.send(embed=Embed(title='Done', description=f'Successfully {"added" if mode == "add" else "removed"} this user in the list: {user.mention} ({user.id})', color = Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar) if update_status else Embed(title='Failed', description='A error occured', color = Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
-        except Exception as e:
-            ilog('Exception in command /whitelist_modify:' + e, logtype= 'error', flag = 'command')
-            await interaction.followup.send(ephemeral= True, embed=Embed(title="Exception occurred", description=str(e), color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
-
     @app_commands.command(name = 'maintenance', description='Toggle maintenance mode for supported commands')
     @app_commands.describe(status_to_set = 'Status of maintenance to set into the database')
     async def maintenance(self, interaction: Interaction, status_to_set: bool = False):
@@ -222,7 +225,8 @@ class system(app_commands.Group):
         old = maintenance_status
         maintenance_status = status_to_set
         await interaction.followup.send(embed=Embed(color=Color.green(), title='Success', description=f'Maintenance status changed: {old} -> {maintenance_status}', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
-tree.add_command(system())
+tree.add_command(localsys(), guild=Object(id=configurations.owner_guild_id))
+tree.add_command(sys())
 # tree.add_command(grp)
 
 """
