@@ -38,7 +38,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2.4d' # ignore
+    bot_version = 'v0.2.4e' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -113,7 +113,7 @@ async def scripteval(interaction: Interaction, script: str, ephemeral: bool = Fa
     if not result:
         await interaction.followup.send(embed=Embed(title="Script executed", color=Color.green(), description='Script executed successfully, the result, might be `None` or too long to fill in here.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
     else:
-        await interaction.followup.send(embed=Embed(title="Result", description= "-> " + str(result), color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+        await interaction.followup.send(embed=Embed(title="Result", description= "```" + str(result) + "```", color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
 @tree.command(name='update', description='system - update bot repo', guild=Object(id=configurations.owner_guild_id))
 async def update_bot(interaction: Interaction, ephemeral: bool = False):
@@ -199,7 +199,7 @@ async def whitelist_list(interaction: Interaction, ephemeral: bool = False):
 
 # @tree.command(name = 'whitelist_modify', description='Modify beta whitelist list in database.json', )
 @tree.command(name = 'whitelist_modify', description='system - Modify beta whitelist list in database.json', guild=Object(id=configurations.owner_guild_id))
-@app_commands.describe(user = 'User that will be modified in the whitelist database', mode = 'Mode to modify, True = add / False = remove')
+@app_commands.describe(user = 'User that will be modified in the whitelist database', mode = 'add/remove the user from the database')
 async def whitelist_modify(interaction: Interaction, user: Member, mode: typing.Literal['add', 'remove'] = 'add', ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
