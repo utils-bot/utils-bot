@@ -38,7 +38,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2.3' # ignore
+    bot_version = 'v0.2.3a' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -363,7 +363,7 @@ async def on_ready():
     ilog(str(client.user) + ' has connected to Discord.', 'init', 'info')
     ilog('Connected to ' + str(len(client.guilds)) + ' guilds and ' + str(len(client.guilds)) + ' users.', 'init', 'info')
     await client.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
-    ip = requests.get('ipv4.icanhazip.com').text
+    ip = requests.get('https://ipv4.icanhazip.com').text
 
 """
 -------------------------------------------------
