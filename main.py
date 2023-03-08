@@ -1,7 +1,7 @@
 from discord import app_commands, Intents, Client, Interaction, Object, Embed, File, Game, Status, Color, Member, ui, ButtonStyle
 from jsondb import get_whitelist, update_whitelist, beta_check, check_bot_version
+import logging, json, typing, functools, traceback, asyncio, requests
 from selenium.webdriver.support import expected_conditions as EC
-import logging, json, typing, functools, traceback, asyncio
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -38,7 +38,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2.5b' # ignore
+    bot_version = 'v0.2.3' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -52,13 +52,17 @@ async def antiblock(blocking_func: typing.Callable, *args, **kwargs) -> typing.A
     return await client.loop.run_in_executor(None, func)
 
 async def get_screenshot(url, window_height: int, window_width: int, delay: int= 7):
+    global ip
     options = Options()
     for arg in ['--no-sandbox', '--disable-dev-shm-usage', '--headless', '--disable-gpu', '--window-position=0,0', f'--window-size={window_height},{window_width}', '--enable-features=WebContentsForceDark']: options.add_argument(arg)
+    options.add_experimental_option("prefs", {"download_restrictions": 3})
     with webdriver.Chrome(options=options) as driver:
         driver.get(url)
         wait = WebDriverWait(driver, 10)
         wait.until(EC.presence_of_element_located((By.XPATH, "//body[not(@class='loading')]")))
         await asyncio.sleep(3 + delay)
+        elements = driver.find_elements(By.XPATH, f"//*[contains(text(), '{ip}')]")
+        for element in elements: driver.execute_script("arguments[0].innerText = arguments[1];", element, '<the host ip address>')
         image_bytes = driver.get_screenshot_as_png()
     return image_bytes
 
@@ -251,6 +255,9 @@ async def screenshot(interaction: Interaction, url: str, delay: int = 0, resolut
     if not url.startswith('http'):
         await interaction.followup.send(embed=Embed(title='Error', description='Please provide a valid URL, including http or https.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
         return
+    if any(url.startswith(i) for i in [x + y for x in ['http://', 'https://'] for y in ['0.0.0.0', '127.0.0.1', 'localhost']]):
+        await interaction.followup.send(embed=Embed(title='Error', description='Please do not try to access localhost.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
+        return
     if delay > 20:
         await interaction.followup.send(embed=Embed(title='Error', description='Delay must be less than 20s.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
         return
@@ -343,6 +350,7 @@ async def on_ready():
     global global_ratelimit
     global maintenance_status
     global unix_uptime
+    global ip 
     unix_uptime = round(time())
     global_ratelimit = 0
     maintenance_status = configurations.default_maintenance_status
@@ -355,6 +363,7 @@ async def on_ready():
     ilog(str(client.user) + ' has connected to Discord.', 'init', 'info')
     ilog('Connected to ' + str(len(client.guilds)) + ' guilds and ' + str(len(client.guilds)) + ' users.', 'init', 'info')
     await client.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
+    ip = requests.get('ipv4.icanhazip.com').text
 
 """
 -------------------------------------------------
