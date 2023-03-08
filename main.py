@@ -91,8 +91,9 @@ APPLICATION ERROR HANDLER
 async def on_error(interaction: Interaction, error):
     full_err = traceback.format_exc()
     cleaned = clean_traceback(full_err)
-    minlog: str = cleaned[:cleaned.rfind('\n')][-800:]
-    es = f"```{'...' if minlog != cleaned else ''}{minlog}```" + f"```{cleaned.splitlines()[-1]}```"
+    minlog = cleaned[:cleaned.rfind('\n')]
+    minlog_under800 = minlog[-800:] 
+    es = f"```{'...' if minlog_under800 != minlog else '' + minlog_under800}```" + f"```{cleaned.splitlines()[-1]}```"
     # if (i:=interaction.user.id) in configurations.owner_guild_id or i in get_whitelist():
     ilog('Exception in a application command: ' + full_err + '--------------------end of exception--------------------', logtype= 'error', flag = 'command')
     await interaction.followup.send(embed=Embed(title="Exception occurred", description= es, color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
