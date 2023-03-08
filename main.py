@@ -77,7 +77,7 @@ def build_mode():
 def clean_traceback(traceback_str: str) -> str:
     result = ''
     lines = traceback_str.splitlines()
-    for i, line in enumerate(line):
+    for i, line in enumerate(lines):
         if "The above exception was the direct cause of the following exception:" in line:
             result = "\n".join(lines[:i])
             break
