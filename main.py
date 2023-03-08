@@ -38,7 +38,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2.3a' # ignore
+    bot_version = 'v0.2.3b' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -74,14 +74,23 @@ def build_mode():
         fw.write(fr.read())
         ilog(f'Finished making pc.py file that you can input your own shit', 'build', 'info')
 
-
+def clean_traceback(traceback_str: str) -> str:
+    result = ''
+    lines = traceback_str.splitlines()
+    for i, line in enumerate(line):
+        if "The above exception was the direct cause of the following exception:" in line:
+            result = "\n".join(lines[:i])
+            break
+    if not result: result = traceback_str
+    result = "\n".join(filter(lambda x: x.strip() != "", result.splitlines()))
+    return result
 """-------------------------------------------------
 APPLICATION ERROR HANDLER
 -------------------------------------------------"""
 @tree.error
 async def on_error(interaction: Interaction, error):
     full_err = traceback.format_exc()
-    es = f"```...{full_err[-800:]}```"
+    es = f"```...{(cleaned:=clean_traceback(full_err))[-800:]}```" + f"```{cleaned.splitlines()[-1]}```"
     # if (i:=interaction.user.id) in configurations.owner_guild_id or i in get_whitelist():
     ilog('Exception in a application command: ' + full_err + '--------------------end of exception--------------------', logtype= 'error', flag = 'command')
     await interaction.followup.send(embed=Embed(title="Exception occurred", description= es, color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
