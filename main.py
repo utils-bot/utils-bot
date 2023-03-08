@@ -38,7 +38,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2.5' # ignore
+    bot_version = 'v0.2.5a' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -86,11 +86,10 @@ async def on_error(interaction: Interaction, error):
 
 """-------------------------------------------------
 BASE COMMANDS
-
-system
+/sync
+/system
 |--update
 |--version
-|--sync
 |--restartbot
 |--whitelist_list
 |--maintenance
@@ -98,6 +97,22 @@ system
 |--eval
 |--whitelist_modify
 -------------------------------------------------""" 
+
+@tree.command(name='sync', description='system - sync all commands to all guilds manually')#, guild=Object(id=configurations.owner_guild_id))
+async def sync(interaction: Interaction, ephemeral: bool = False):
+    await interaction.response.defer(ephemeral=ephemeral)
+    if interaction.user.id not in configurations.owner_ids:
+        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
+        return
+    
+    await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
+    tree.copy_global_to(guild = Object(id = configurations.owner_guild_id))
+    await tree.sync()
+    ilog(f'Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}', logtype = 'info', flag = 'tree')
+    await interaction.followup.send(embed=Embed(title="Command tree synced", color=Color.green(), description='Successfully synced the global command tree to all guilds', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
+    await client.change_presence(activity=Game('synced. reloading...'), status=Status.dnd)
+    sleep(5)
+    await client.change_presence(activity=Game('version ' + configurations.bot_version + ' [outdated]' if not check_bot_version(configurations.bot_version) else ""), status=Status.online)
 
 class system(app_commands.Group):
     @app_commands.command(name='eval', description='system - execute python scripts via eval()')
@@ -135,22 +150,6 @@ class system(app_commands.Group):
             return
         
         await interaction.followup.send(ephemeral=ephemeral, embed=Embed(color=Color.green(), title = 'Bot version:', description= f'Bot version {configurations.bot_version} {"[outdated]" if not check_bot_version(configurations.bot_version) else "[up-to-date]"}', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
-
-    @app_commands.command(name='sync', description='system - sync all commands to all guilds manually')#, guild=Object(id=configurations.owner_guild_id))
-    async def sync(self, interaction: Interaction, ephemeral: bool = False):
-        await interaction.response.defer(ephemeral=ephemeral)
-        if interaction.user.id not in configurations.owner_ids:
-            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
-            return
-        
-        await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
-        tree.copy_global_to(guild = Object(id = configurations.owner_guild_id))
-        await tree.sync()
-        ilog(f'Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}', logtype = 'info', flag = 'tree')
-        await interaction.followup.send(embed=Embed(title="Command tree synced", color=Color.green(), description='Successfully synced the global command tree to all guilds', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
-        await client.change_presence(activity=Game('synced. reloading...'), status=Status.dnd)
-        sleep(5)
-        await client.change_presence(activity=Game('version ' + configurations.bot_version + ' [outdated]' if not check_bot_version(configurations.bot_version) else ""), status=Status.online)
 
     @app_commands.command(name='restart', description='system - Restart the bot')
     async def restartbot(self, interaction: Interaction, ephemeral: bool = False):
