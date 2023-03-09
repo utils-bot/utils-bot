@@ -389,9 +389,7 @@ async def on_ready():
     ilog(str(client.user) + ' has connected to Discord.', 'init', 'info')
     guilds_num = len(client.guilds)
     members_set = set()
-    for guild in client.guilds:
-        for member in guild.members:
-            members_set.add(member)
+    (members_set.add(i) for i in [k for k in client.guilds])
     members_num = len(members_set)
     ilog('Connected to ' + str(guilds_num) + ' guilds and ' + str(members_num)  + ' users.', 'init', 'info')
     await client.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
