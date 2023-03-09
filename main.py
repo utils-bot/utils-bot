@@ -1,3 +1,9 @@
+"""---------------------------------------------
+Env:
+- Bot token -> .env:bot_token
+- Owner guild id -> .env:owner_guild_id
+- Random quotes -> .env:not_builder
+---------------------------------------------"""
 from discord import app_commands, Intents, Client, Interaction, Object, Embed, File, Game, Status, Color, Member, ui, ButtonStyle
 from jsondb import get_whitelist, update_whitelist, beta_check, check_bot_version
 import logging, json, typing, functools, traceback, asyncio, requests
@@ -38,7 +44,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2.3b' # ignore
+    bot_version = 'v0.2.3c' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -55,7 +61,34 @@ async def get_screenshot(url, window_height: int, window_width: int, delay: int=
     global ip
     options = Options()
     for arg in ['--no-sandbox', '--disable-dev-shm-usage', '--headless', '--disable-gpu', '--window-position=0,0', f'--window-size={window_height},{window_width}', '--enable-features=WebContentsForceDark']: options.add_argument(arg)
-    options.add_experimental_option("prefs", {"download_restrictions": 3})
+    prefs = {
+    "download_restrictions": 3,
+    "profile.default_content_settings.popups": 0,
+    "profile.default_content_settings.automatic_downloads": 1,
+    "profile.content_settings.pattern_pairs": {
+        "<file_scheme>/*": {
+            "content_settings": {
+                "automatic_downloads": 2
+            }
+        },
+        "<http_and_https>/*": {
+            "content_settings": {
+                "content_disposition": "attachment",
+                "automatic_downloads": 2
+            }
+        },
+        "text/*": {
+            "content_settings": {
+                "content_disposition": "inline",
+                "automatic_downloads": 1
+            }
+        },
+        "image/*": {
+            "content_settings": {
+                "content_disposition": "inline",
+                "automatic_downloads": 1
+    }}}}
+    options.add_experimental_option("prefs", prefs)
     with webdriver.Chrome(options=options) as driver:
         driver.get(url)
         wait = WebDriverWait(driver, 10)
