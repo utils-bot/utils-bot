@@ -158,7 +158,7 @@ class sys(app_commands.Group):
         if not result:
             await interaction.followup.send(embed=Embed(title="Script executed", color=Color.green(), description='Script executed successfully, the result, might be `None` or too long to fill in here.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
         else:
-            await interaction.followup.send(embed=Embed(title="Result", description= "```" + str(result) + "```", color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await interaction.followup.send(embed=Embed(title="Result", description= "```py\n" + str(result) + "```", color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
     @app_commands.command(name = 'guilds', description= 'system - list guilds that the bot are currently in.')
     async def guilds(self, interaction: Interaction, ephemeral: bool = True):
         await interaction.response.defer(ephemeral=ephemeral)
