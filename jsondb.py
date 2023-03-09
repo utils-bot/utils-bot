@@ -23,13 +23,9 @@ def update_whitelist(user: int, add: bool = True) -> bool:
     if not path.exists('whitelist.json'):
         with open('whitelist.json', 'w+') as f:
             json.dump({'whitelisted_beta_users': []}, f)
-    database = get_whitelist()
-    if add:
-        if user not in database:
-            database.append(user)
-    else:
-        if user in database:
-            database.remove(user)
+    database = set(get_whitelist())
+    database.add(user) if add else database.remove(user) if user in database else None
+    database = list(database)
     with open('whitelist.json', 'w') as f:
         json.dump({'whitelisted_beta_users': database}, f)
     return True

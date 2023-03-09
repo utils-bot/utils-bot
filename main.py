@@ -44,7 +44,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2.4' # ignore
+    bot_version = 'v0.2.4a' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
