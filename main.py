@@ -63,31 +63,11 @@ async def get_screenshot(url, window_height: int, window_width: int, delay: int=
     for arg in ['--no-sandbox', '--disable-dev-shm-usage', '--headless', '--disable-gpu', '--window-position=0,0', f'--window-size={window_height},{window_width}', '--enable-features=WebContentsForceDark']: options.add_argument(arg)
     prefs = {
     "download_restrictions": 3,
-    "profile.default_content_settings.popups": 0,
-    "profile.default_content_settings.automatic_downloads": 1,
-    "profile.content_settings.pattern_pairs": {
-        "<file_scheme>/*": {
-            "content_settings": {
-                "automatic_downloads": 2
-            }
-        },
-        "<http_and_https>/*": {
-            "content_settings": {
-                "content_disposition": "attachment",
-                "automatic_downloads": 2
-            }
-        },
-        "text/*": {
-            "content_settings": {
-                "content_disposition": "inline",
-                "automatic_downloads": 1
-            }
-        },
-        "image/*": {
-            "content_settings": {
-                "content_disposition": "inline",
-                "automatic_downloads": 1
-    }}}}
+    "download.open_pdf_in_system_reader": False,
+    "download.prompt_for_download": True,
+    "download.default_directory": "/dev/null",
+    "plugins.always_open_pdf_externally": False
+    }
     options.add_experimental_option("prefs", prefs)
     with webdriver.Chrome(options=options) as driver:
         driver.get(url)
