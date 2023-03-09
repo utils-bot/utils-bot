@@ -1,5 +1,6 @@
 import json
 from os import path
+from logger import ilog
 def get_whitelist() -> list:
     if not path.exists('whitelist.json'):
         with open('whitelist.json', 'w+') as f:
@@ -17,17 +18,18 @@ def check_bot_version(to_compare: str) -> str:
         version = json.load(f)
     return version.get('current_version') == to_compare
 
-def update_whitelist(id: int, add: bool = True) -> bool:
+def update_whitelist(user: int, add: bool = True) -> bool:
+    ilog(f'Whitelist updated for user {user} -> {add}', 'whitelist', 'warning')
     if not path.exists('whitelist.json'):
         with open('whitelist.json', 'w+') as f:
             json.dump({'whitelisted_beta_users': []}, f)
     database = get_whitelist()
     if add:
-        if id not in database:
-            database.append(id)
+        if user not in database:
+            database.append(user)
     else:
-        if id in database:
-            database.remove(id)
+        if user in database:
+            database.remove(user)
     with open('whitelist.json', 'w') as f:
         json.dump({'whitelisted_beta_users': database}, f)
     return True
