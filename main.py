@@ -388,7 +388,7 @@ async def on_ready():
     ilog(f"Bot is currently on version {configurations.bot_version}", 'init', 'info')
     ilog(str(client.user) + ' has connected to Discord.', 'init', 'info')
     guilds_num = len(client.guilds)
-    members_num = len(set(sum(guild.members for guild in guilds_num)))
+    members_num = len(set(sum(guild.members for guild in client.guilds)))
     ilog('Connected to ' + str(guilds_num) + ' guilds and ' + str(members_num)  + ' users.', 'init', 'info')
     await client.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
     ip = requests.get('https://ipv4.icanhazip.com').text
