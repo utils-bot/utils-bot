@@ -78,7 +78,7 @@ def clean_traceback(traceback_str: str) -> str:
     result = ''
     lines = traceback_str.splitlines()
     for i, line in enumerate(lines):
-        if "The above exception was the direct cause of the following exception:" in line:
+        if any(i in line for i in ["The above exception was the direct cause of the following exception:", "Stacktrace:"]):
             result = "\n".join(lines[:i])
             break
     if not result: result = traceback_str
@@ -93,10 +93,10 @@ async def on_error(interaction: Interaction, error):
     cleaned = clean_traceback(full_err)
     minlog = cleaned[:cleaned.rfind('\n')]
     minlog_under800 = minlog[-800:] 
-    es = ('Check the console for more information' if len(minlog) > 1000 else '') + f"```py\n{('...' if minlog_under800 != minlog else '') + minlog_under800}```" + f"```py\n{cleaned.splitlines()[-1]}```"
+    es = ('Check the console for more information.' if len(minlog) > 1000 else '') + f"```py\n{('...' if minlog_under800 != minlog else '') + minlog_under800}```" + f"```py\n{cleaned.splitlines()[-1]}```"
     # if (i:=interaction.user.id) in configurations.owner_guild_id or i in get_whitelist():
     ilog('Exception in a application command: ' + full_err + '--------------------end of exception--------------------', logtype= 'error', flag = 'command')
-    await interaction.followup.send(embed=Embed(title="Exception occurred", description= es, color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+    await interaction.followup.send(embed=Embed(title="Exception occurred:", description= es, color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
     # else:
         # await interaction.followup.send(embed=Embed(title="Exception occurred", description='Contact the bot owner(s) for more information.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
