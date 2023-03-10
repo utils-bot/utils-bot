@@ -153,7 +153,7 @@ class sys(app_commands.Group):
             await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
             return
         await interaction.followup.send(embed=Embed(color=Color.blue(), title='Executing...', description='Executing the script...', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), wait=True)
-        sleep(2)
+        sleep(0.3)
         ilog(f'{interaction.user.name}#{interaction.user.discriminator} ({interaction.user.id}) eval-ed: {script}', 'eval', 'warning')
         result = eval(script)
         if not result:
@@ -255,6 +255,8 @@ class localsys(app_commands.Group):
         old = maintenance_status
         maintenance_status = status_to_set
         await interaction.followup.send(embed=Embed(color=Color.green(), title='Success', description=f'Maintenance status changed: {old} -> {maintenance_status}', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+
+
 tree.add_command(localsys(), guild=Object(id=configurations.owner_guild_id))
 tree.add_command(sys())
 # tree.add_command(grp)
