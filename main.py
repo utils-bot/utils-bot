@@ -155,7 +155,7 @@ class sys(app_commands.Group):
     @app_commands.command(name='eval', description='system - execute python scripts via eval()')
     async def scripteval(self, interaction: Interaction, script: str, ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
-        if not self.is_authorized(interaction): return
+        if not await self.is_authorized(interaction): return
         await interaction.followup.send(embed=Embed(color=Color.blue(), title='Executing...', description='Executing the script...', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), wait=True)
         await asyncio.sleep(0.5)
         ilog(f'{interaction.user.name}#{interaction.user.discriminator} ({interaction.user.id}) eval-ed: {script}', 'eval', 'warning')
@@ -167,7 +167,7 @@ class sys(app_commands.Group):
     @app_commands.command(name = 'guilds', description= 'system - list guilds that the bot are currently in.')
     async def guilds(self, interaction: Interaction, ephemeral: bool = True):
         await interaction.response.defer(ephemeral=ephemeral)
-        if not self.is_authorized(interaction): return
+        if not await self.is_authorized(interaction): return
         embed = Embed(title = 'Guilds list:', description= 'Here is the list of guilds that have this bot in:')
         if len(k:=client.guilds) <= 30:
             current_list = ""
@@ -182,7 +182,7 @@ class sys(app_commands.Group):
     @whitelist.command(name = 'list', description ='system - Get beta whitelist list in whitelist.json')
     async def whitelist_list(self, interaction: Interaction, ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
-        if not self.is_authorized(interaction): return
+        if not await self.is_authorized(interaction): return
 
         embed = Embed(title='Whitelist list', description='Here is the list of beta-whitelisted user IDs:', color = Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         current_list = ""
@@ -196,7 +196,7 @@ class sys(app_commands.Group):
     @app_commands.describe(user = 'User that will be modified in the whitelist database', mode = 'add/remove the user from the database')
     async def whitelist_modify(self, interaction: Interaction, user: Member, mode: typing.Literal['add', 'remove'] = 'add', ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
-        if not self.is_authorized(interaction): return
+        if not await self.is_authorized(interaction): return
         
         try:
             update_status = update_whitelist(id = user.id, add = mode == 'add')
@@ -215,7 +215,7 @@ class localsys(app_commands.Group):
     @app_commands.command(name='update', description='system - update bot repo')
     async def update_bot(self, interaction: Interaction, ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
-        if not self.is_authorized(interaction): return
+        if not await self.is_authorized(interaction): return
         
         ilog("Updating git repo...", 'git', 'warning')
         system('git fetch --all')
@@ -226,13 +226,13 @@ class localsys(app_commands.Group):
     @app_commands.command(name='version', description='system - check the code version')
     async def version(self, interaction: Interaction, ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
-        if not self.is_authorized(interaction): return
+        if not await self.is_authorized(interaction): return
         await interaction.followup.send(ephemeral=ephemeral, embed=Embed(color=Color.green(), title = 'Bot version:', description= f'Bot version {configurations.bot_version} {"[outdated]" if not check_bot_version(configurations.bot_version) else "[up-to-date]"}', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
     @app_commands.command(name='restart', description='system - Restart the bot')
     async def restartbot(self, interaction: Interaction, ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
-        if not self.is_authorized(interaction): return
+        if not await self.is_authorized(interaction): return
 
         await interaction.followup.send(embed=Embed(title="Received", description="Restart request received, killing docker container...", color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
         ilog(f'[+] Restart request by {interaction.user.id} ({interaction.user.display_name})', 'command', 'info')
@@ -245,7 +245,7 @@ class localsys(app_commands.Group):
     @app_commands.describe(status_to_set = 'Status of maintenance to set into the database')
     async def maintenance(self, interaction: Interaction, status_to_set: bool = False):
         await interaction.response.defer(ephemeral = True)
-        if not self.is_authorized(interaction): return
+        if not await self.is_authorized(interaction): return
         global maintenance_status
         old = maintenance_status
         maintenance_status = status_to_set
@@ -302,44 +302,6 @@ async def screenshot(interaction: Interaction, url: str, delay: int = 0, resolut
     await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
     global_ratelimit += -1
 
-"""class RockPaperScissorsUIView(ui.View):
-    def __init__(self, interaction: Interaction):
-        super().__init__()
-        self.interaction = interaction
-    @ui.button(label='Rock 👊')
-    async def rock(self, interaction: Interaction, button: ui.Button):
-        await self.play('rock')
-    @ui.button(label='Paper 📃')
-    async def paper(self, interaction: Interaction, button: ui.Button):
-        await self.play('paper')
-    @ui.button(label='Scissors ✂')
-    async def scissors(self, interaction: Interaction, button: ui.Button):
-        await self.play('scissors')
-    
-    async def play(self, user_choice: str) -> None:
-        interaction = self.interaction
-        computer_choice = choice(['rock', 'paper', 'scissors'])
-        win_ = (user_choice == 'rock' and computer_choice == 'scissors') or (user_choice == 'paper' and computer_choice == 'rock') or (user_choice == 'scissors' and computer_choice == 'paper')
-        tie_ = user_choice == computer_choice
-        result = 'win 😊 How lucky are you!' if win_ else 'tie 😐 Well played!' if tie_ else 'lose 😞 Better luck next time...'
-        await interaction.followup.send(embed=Embed(color = Color.red() if win_ else Color.blue() if tie_ else Color.red(), title = 'Rock Paper Scissors', description= f'Bot chose {computer_choice}. You {result}').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
-
-@tree.command(name = 'rps', description= 'BETA - Play Rock Paper Scissors, this is a test for discord buttons.')
-@app_commands.describe(ephemeral = 'Share your play result with people in the guild, defaulting to True.')
-async def rps(interaction: Interaction, ephemeral: bool = True):
-    await interaction.response.defer(ephemeral=ephemeral)
-    if global_ratelimit >= configurations.max_global_ratelimit:
-        await interaction.followup.send(embed=Embed(color=Color.red(), title='Rate-limited', description='Bot is currently global rate-limited, please try again later', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral= True)
-        return
-    if not beta_check(user = interaction.user.id, beta_bool = configurations.beta) or not interaction.user.id in configurations.owner_ids:
-        await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
-        return
-    if interaction.guild_id is None:
-        await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
-        return
-    view = RockPaperScissorsUIView(interaction)
-    await interaction.followup.send(embed=Embed(title='Rock Paper Scissors', description='Choose your move:', color=Color.red(), timestamp=datetime.now()).set_footer(text=f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), view=view)
-    """
 
 """
 -------------------------------------------------
