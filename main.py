@@ -279,8 +279,8 @@ FEATURE COMMANDS (beta)
 -------------------------------------------------
 """
 @tree.command(name='screenshot', description='BETA - Take a screenshot of a website')
-@app_commands.describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s)', resolution = '(Will be overwritten if you are not botadmin.) Resolution of the driver window. Format height:width', ephemeral = 'if you want to public the bot response to all users, make this True, else False.')
-async def screenshot(interaction: Interaction, url: str, delay: int = 0, resolution: str = '1280:720', ephemeral: bool = False):
+@app_commands.describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s)', resolution = '(Will be overwritten if you are not botadmin.) Resolution of the driver window, e.g 720 -> 720p', ephemeral = 'if you want to public the bot response to all users, make this True, else False.')
+async def screenshot(interaction: Interaction, url: str, delay: int = 0, resolution: int = 720, ephemeral: bool = False):
     global global_ratelimit
     await interaction.response.defer(ephemeral = ephemeral)
     # conditions to stop executing the command
@@ -300,18 +300,13 @@ async def screenshot(interaction: Interaction, url: str, delay: int = 0, resolut
         await interaction.followup.send(embed=Embed(title='Error', description='Delay must be less than 20s.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
         return
     if interaction.user.id not in configurations.owner_ids:
-        resolution = '1280:720'
+        resolution = 720
     if global_ratelimit >= configurations.max_global_ratelimit:
         await interaction.followup.send(embed=Embed(color=Color.red(), title='Rate-limited', description='Bot is currently global rate-limited, please try again later', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral= True)
         return
-    i = resolution.split(':')
-    if len(i) != 2: # or (len(i) == 2 and all(isinstance(k, int) for k in i)):
-        await interaction.followup.send(embed=Embed(title='Error', description='Invalid resolution format. Must be str(int:int). For example "1920:1080"/"123:456"', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
-        return
     await asyncio.sleep(2)
     global_ratelimit += 1
-    window_height, window_width = i[0], i[1]
-    image_bytes = await get_screenshot(url=url, window_height=window_height, window_width=window_width, delay = delay)
+    image_bytes = await get_screenshot(url=url, resolution=resolution, delay = delay)
     embed = Embed(title='Success',description=f'Here is the website screenshot of {url}', color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
     embed.set_image(url='attachment://screenshot.png')
     await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
