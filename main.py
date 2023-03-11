@@ -7,10 +7,7 @@ Env:
 from discord import app_commands, Intents, Client, Interaction, Object, Embed, File, Game, Status, Color, Member, ui, ButtonStyle
 from jsondb import get_whitelist, update_whitelist, beta_check, check_bot_version
 import logging, json, typing, functools, traceback, asyncio, requests
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
+from playwright.async_api import async_playwright
 from selenium import webdriver
 from logger import CustomFormatter, ilog
 from os import environ, system
@@ -44,7 +41,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.2.5' # ignore
+    bot_version = 'v0.3' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -57,7 +54,7 @@ async def antiblock(blocking_func: typing.Callable, *args, **kwargs) -> typing.A
     func = functools.partial(blocking_func, *args, **kwargs)
     return await client.loop.run_in_executor(None, func)
 
-async def get_screenshot(url, window_height: int, window_width: int, delay: int= 7):
+"""async def get_screenshot(url, window_height: int, window_width: int, delay: int= 7):
     global ip
     options = Options()
     for arg in ['--no-sandbox', '--disable-dev-shm-usage', '--headless', '--disable-gpu', '--window-position=0,0', f'--window-size={window_height},{window_width}', '--enable-features=WebContentsForceDark']: options.add_argument(arg)
@@ -77,7 +74,26 @@ async def get_screenshot(url, window_height: int, window_width: int, delay: int=
         elements = driver.find_elements(By.XPATH, f"//*[contains(text(), '{ip}')]")
         for element in elements: driver.execute_script("arguments[0].innerText = arguments[1];", element, '<the host ip address>')
         image_bytes = driver.get_screenshot_as_png()
+    return image_bytes"""
+
+async def get_screenshot(url: str, resolution: int, delay: int = 7):
+    global ip
+    window_height = int(resolution*16/9)
+    window_width = resolution
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(downloads_path='/dev/null', headless=True, args=['--no-sandbox', '--disable-dev-shm-usage', '--headless', '--disable-gpu', '--window-position=0,0', '--enable-features=WebContentsForceDark'])
+        context = await browser.new_context(accept_downloads=False)
+        page = await context.new_page()
+        await page.set_viewport_size({"width": window_width, "height": window_height})
+        await page.goto(url)
+        await page.wait_for_selector("body:not(.loading)")
+        await asyncio.sleep(3 + delay)
+        elements = await page.query_selector_all(f"//*[contains(text(), '{ip}')]")
+        for element in elements: await element.evaluate(f"el => el.textContent = '{ip}'")
+        image_bytes = await page.screenshot()
+        browser.close()
     return image_bytes
+
 
 def build_mode():
     with open('version.json', 'w+') as f:
