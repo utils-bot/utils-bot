@@ -133,9 +133,8 @@ BASE COMMANDS
 async def sync(interaction: Interaction, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
-        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
+        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.", timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
         return
-    
     await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
     tree.copy_global_to(guild = Object(id = configurations.owner_guild_id))
     await tree.sync()
@@ -149,7 +148,7 @@ class sys(app_commands.Group):
     async def is_authorized(self, interaction: Interaction):
         i = interaction.user.id in configurations.owner_ids
         if not i:
-            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
+            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.", timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
         return i
 
     @app_commands.command(name='eval', description='system - execute python scripts via eval()')
@@ -209,7 +208,7 @@ class localsys(app_commands.Group):
     async def is_authorized(self, interaction: Interaction):
         i = interaction.user.id in configurations.owner_ids
         if not i:
-            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You must be the owner to use this command!", timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
+            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.", timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
         return i
     
     @app_commands.command(name='update', description='system - update bot repo')
