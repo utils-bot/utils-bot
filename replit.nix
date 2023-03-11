@@ -6,6 +6,7 @@
     pkgs.replitPackages.prybar-python310
     pkgs.replitPackages.stderred
     pkgs.playwright
+    pkgs.glibc
   ];
   env = {
     PYTHON_LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
