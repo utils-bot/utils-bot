@@ -331,7 +331,7 @@ class network(Group):
     """@command(name = 'ip', description='Get detailed information of a IP address')
     async def ip(self, interaction: Interaction, url: str, delay: int):
         return"""
-
+tree.add_command(network())
 """
 -------------------------------------------------
 FEATURE COMMANDS (official)
