@@ -288,7 +288,7 @@ FEATURE COMMANDS (beta)
 @tree.command(name='screenshot', description='BETA - Take a screenshot of a website')
 @describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s) (default: 0)', resolution = '(Will be overwritten if you are not botadmin.) Resolution of the driver window (Default: 720)', ephemeral = 'if you want to public the bot response to all users, make this True, else False. (default: False)', engine = 'for advanced user only: Engine used for the screenshot (default: selenium)')
 @choices(resolution = [Choice(value=i, name=k) for i, k in [(240, '240p - Minimum'), (360, '360p - Website'), (480, '480p - Standard'), (720, '720p - HD'), (1080, '1080p - FullHD'), (1440, '1440p - 2K'), (2160, '2160p - 4K')]])
-async def screenshot(interaction: Interaction, url: str, delay: int = 0, resolution: Choice[int] = 720, engine: typing.Literal['selenium', 'playwright'] = 'selenium', ephemeral: bool = False):
+async def screenshot(interaction: Interaction, url: str, delay: int = 0, resolution: int = 720, engine: typing.Literal['selenium', 'playwright'] = 'selenium', ephemeral: bool = False):
     global global_ratelimit
     await interaction.response.defer(ephemeral = ephemeral)
     # conditions to stop executing the command
