@@ -350,7 +350,7 @@ class network(Group):
         await asyncio.sleep(2)
         global_ratelimit += 1
         ssfunc = get_screenshot_selenium if engine == 'selenium' else get_screenshot_playwright if engine == 'playwright' else get_screenshot_undetected_chromedriver
-        image_bytes = ssfunc(url=url, resolution=resolution, delay=delay)
+        image_bytes = await ssfunc(url=url, resolution=resolution, delay=delay)
         embed = Embed(title='Success',description=f'Here is the website screenshot of {url}', color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         embed.set_image(url='attachment://screenshot.png')
         await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
