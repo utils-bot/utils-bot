@@ -91,7 +91,6 @@ async def get_screenshot_undetected_chromedriver(url, resolution: int, delay: in
     window_height = int(resolution*16/9)
     window_width = resolution
     options = Options()
-    options.driver
     for arg in ['--no-sandbox', '--disable-dev-shm-usage', '--headless', '--disable-gpu', '--window-position=0,0', f'--window-size={window_height},{window_width}', '--enable-features=WebContentsForceDark']: options.add_argument(arg)
     prefs = {
     "download_restrictions": 3,
