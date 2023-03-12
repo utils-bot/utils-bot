@@ -14,6 +14,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from playwright.async_api import async_playwright
 from selenium import webdriver
+from undetected_chromedriver import Chrome
 from logger import CustomFormatter, ilog
 from os import environ, system
 from datetime import datetime
@@ -46,8 +47,9 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.3.2' # ignore
+    bot_version = 'v0.3.3' # ignore
     not_builder = bool(environ.get('not_builder', False))
+    ipinfo_api_key: str = environ.get('ipinfo_api_key', '')
 
 intents = Intents.default()
 intents.members = True
@@ -73,7 +75,7 @@ async def get_screenshot_selenium(url, resolution: int, delay: int = 7):
     "plugins.always_open_pdf_externally": False
     }
     options.add_experimental_option("prefs", prefs)
-    with webdriver.Chrome(options=options) as driver:
+    with Chrome(options=options) as driver:
         driver.get(url)
         wait = WebDriverWait(driver, 10)
         wait.until(EC.presence_of_element_located((By.XPATH, "//body[not(@class='loading')]")))
@@ -101,6 +103,11 @@ async def get_screenshot_playwright(url: str, resolution: int, delay: int = 7):
         browser.close()
     return image_bytes
 
+async def get_ip_aiohttp(query: str):
+    return
+
+async def get_redirect_history_aiohttp(url: str, ):
+    return
 
 def build_mode():
     with open('version.json', 'w+') as f:
@@ -276,7 +283,7 @@ class localsys(Group):
 
 tree.add_command(localsys(), guild=Object(id=configurations.owner_guild_id))
 tree.add_command(sys())
-# tree.add_command(grp)
+
 
 """
 -------------------------------------------------
@@ -285,41 +292,45 @@ FEATURE COMMANDS (beta)
 /rps
 -------------------------------------------------
 """
-@tree.command(name='screenshot', description='BETA - Take a screenshot of a website')
-@describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s) (default: 0)', resolution = '(Will be overwritten if you are not botadmin.) Resolution of the driver window (Default: 720)', ephemeral = 'if you want to public the bot response to all users, make this True, else False. (default: False)', engine = 'for advanced user only: Engine used for the screenshot (default: selenium)')
-@choices(resolution = [Choice(value=i, name=k) for i, k in [(240, '240p - Minimum'), (360, '360p - Website'), (480, '480p - Standard'), (720, '720p - HD'), (1080, '1080p - FullHD'), (1440, '1440p - 2K'), (2160, '2160p - 4K')]])
-async def screenshot(interaction: Interaction, url: str, delay: int = 0, resolution: int = 720, engine: typing.Literal['selenium', 'playwright'] = 'selenium', ephemeral: bool = False):
-    global global_ratelimit
-    await interaction.response.defer(ephemeral = ephemeral)
-    # conditions to stop executing the command
-    if not (beta_check(user = interaction.user.id, beta_bool = configurations.beta)) and (not interaction.user.id in configurations.owner_ids):
-        await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
-        return
-    if interaction.guild_id is None:
-        await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
-        return
-    if not url.startswith('http'):
-        await interaction.followup.send(embed=Embed(title='Error', description='Please provide a valid URL, including http or https.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
-        return
-    if any(url.startswith(i) for i in [x + y for x in ['http://', 'https://'] for y in ['0.0.0.0', '127.0.0.1', 'localhost']]):
-        await interaction.followup.send(embed=Embed(title='Error', description='Please do not try to access localhost.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
-        return
-    if delay > 20:
-        await interaction.followup.send(embed=Embed(title='Error', description='Delay must be less than 20s.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
-        return
-    if interaction.user.id not in configurations.owner_ids:
-        resolution = 720
-    if global_ratelimit >= configurations.max_global_ratelimit:
-        await interaction.followup.send(embed=Embed(color=Color.red(), title='Rate-limited', description='Bot is currently global rate-limited, please try again later', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral= True)
-        return
-    await asyncio.sleep(2)
-    global_ratelimit += 1
-    image_bytes = await get_screenshot_selenium(url=url, resolution=resolution, delay = delay) if engine == 'selenium' else await get_screenshot_playwright(url=url, resolution=resolution, delay=delay)
-    embed = Embed(title='Success',description=f'Here is the website screenshot of {url}', color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
-    embed.set_image(url='attachment://screenshot.png')
-    await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
-    global_ratelimit += -1
-
+class network(Group):
+    async def is_authorized(self, interaction: Interaction):
+        i = (beta_check(user = interaction.user.id, beta_bool = configurations.beta)) or (interaction.user.id in configurations.owner_ids)
+        if not i:
+            await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+        k = interaction.guild_id is not None
+        if not k:
+            await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.', color=Color.yellow(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+        return i and k
+    @command(name='screenshot', description='BETA - Take a screenshot of a website')
+    @describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s) (default: 0)', resolution = 'Resolution of the driver window (Default: 720p)', ephemeral = 'If you want to make the response only visible to you. (default: False)', engine = 'for advanced user only: Engine used for the screenshot (default: selenium)')
+    @choices(resolution = [Choice(value=i, name=k) for i, k in [(240, '240p - Minimum'), (360, '360p - Website'), (480, '480p - Standard'), (720, '720p - HD'), (1080, '1080p - Full HD'), (1440, '1440p - 2K'), (2160, '2160p - 4K')]])
+    async def screenshot(self, interaction: Interaction, url: str, delay: int = 0, resolution: int = 720, engine: typing.Literal['selenium', 'playwright'] = 'selenium', ephemeral: bool = False):
+        global global_ratelimit
+        await interaction.response.defer(ephemeral = ephemeral)
+        # conditions to stop executing the command
+        if not await self.is_authorized(interaction): return 
+        if not url.startswith('http'):
+            await interaction.followup.send(embed=Embed(title='Error', description='Please provide a valid URL, including http or https.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
+            return
+        if any(url.startswith(i) for i in [x + y for x in ['http://', 'https://'] for y in ['0.0.0.0', '127.0.0.1', 'localhost']]):
+            await interaction.followup.send(embed=Embed(title='Error', description='Please do not try to access localhost.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
+            return
+        if delay > 20:
+            await interaction.followup.send(embed=Embed(title='Error', description='Delay must be less than 20s.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
+            return
+        if global_ratelimit >= configurations.max_global_ratelimit:
+            await interaction.followup.send(embed=Embed(color=Color.red(), title='Rate-limited', description='Bot is currently global rate-limited, please try again later', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral= True)
+            return
+        await asyncio.sleep(2)
+        global_ratelimit += 1
+        image_bytes = await get_screenshot_selenium(url=url, resolution=resolution, delay = delay) if engine == 'selenium' else await get_screenshot_playwright(url=url, resolution=resolution, delay=delay)
+        embed = Embed(title='Success',description=f'Here is the website screenshot of {url}', color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
+        embed.set_image(url='attachment://screenshot.png')
+        await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
+        global_ratelimit += -1
+    """@command(name = 'ip', description='Get detailed information of a IP address')
+    async def ip(self, interaction: Interaction, url: str, delay: int):
+        return"""
 
 """
 -------------------------------------------------
