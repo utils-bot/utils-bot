@@ -4,7 +4,8 @@ Env:
 - Owner guild id -> .env:owner_guild_id
 - Random quotes -> .env:not_builder
 ---------------------------------------------"""
-from discord import app_commands, Intents, Client, Interaction, Object, Embed, File, Game, Status, Color, Member, ui, ButtonStyle
+from discord import Intents, Client, Interaction, Object, Embed, File, Game, Status, Color, Member
+from discord.app_commands import CommandTree, Group, command, Choice, choices, describe
 from jsondb import get_whitelist, update_whitelist, beta_check, check_bot_version
 import logging, json, typing, functools, traceback, asyncio, requests
 from selenium.webdriver.support import expected_conditions as EC
@@ -45,14 +46,14 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.3.1' # ignore
+    bot_version = 'v0.3.2' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
 intents.members = True
 # intents.message_content = True
 client = Client(intents=intents)
-tree = app_commands.CommandTree(client)
+tree = CommandTree(client)
 
 async def antiblock(blocking_func: typing.Callable, *args, **kwargs) -> typing.Any:
     func = functools.partial(blocking_func, *args, **kwargs)
@@ -166,14 +167,14 @@ async def sync(interaction: Interaction, ephemeral: bool = False):
     await asyncio.sleep(2)
     await client.change_presence(activity=Game('version ' + configurations.bot_version + ' [outdated]' if not check_bot_version(configurations.bot_version) else ""), status=Status.online)
 
-class sys(app_commands.Group):
+class sys(Group):
     async def is_authorized(self, interaction: Interaction):
         i = interaction.user.id in configurations.owner_ids
         if not i:
             await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.", timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
         return i
 
-    @app_commands.command(name='eval', description='system - execute python scripts via eval()')
+    @command(name='eval', description='system - execute python scripts via eval()')
     async def scripteval(self, interaction: Interaction, script: str, ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
         if not await self.is_authorized(interaction): return
@@ -185,7 +186,7 @@ class sys(app_commands.Group):
             await interaction.followup.send(embed=Embed(title="Script executed", color=Color.green(), description='Script executed successfully, the result, might be `None` or too long to fill in here.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
         else:
             await interaction.followup.send(embed=Embed(title="Result", description= "```py\n" + str(result) + "```", color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
-    @app_commands.command(name = 'guilds', description= 'system - list guilds that the bot are currently in.')
+    @command(name = 'guilds', description= 'system - list guilds that the bot are currently in.')
     async def guilds(self, interaction: Interaction, ephemeral: bool = True):
         await interaction.response.defer(ephemeral=ephemeral)
         if not await self.is_authorized(interaction): return
@@ -199,7 +200,7 @@ class sys(app_commands.Group):
         embed.add_field(name = 'Guilds:', value = f"```{current_list}```")
         await interaction.followup.send(embed=embed, ephemeral=ephemeral)
     
-    whitelist = app_commands.Group(name='whitelist', description='Get and modify the beta whitelist in the database')
+    whitelist = Group(name='whitelist', description='Get and modify the beta whitelist in the database')
     @whitelist.command(name = 'list', description ='system - Get beta whitelist list in whitelist.json')
     async def whitelist_list(self, interaction: Interaction, ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
@@ -214,7 +215,7 @@ class sys(app_commands.Group):
 
     # @tree.command(name = 'whitelist_modify', description='Modify beta whitelist list in database.json', )
     @whitelist.command(name = 'modify', description='system - Modify beta whitelist list in database.json')
-    @app_commands.describe(user = 'User that will be modified in the whitelist database', mode = 'add/remove the user from the database')
+    @describe(user = 'User that will be modified in the whitelist database', mode = 'add/remove the user from the database')
     async def whitelist_modify(self, interaction: Interaction, user: Member, mode: typing.Literal['add', 'remove'] = 'add', ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
         if not await self.is_authorized(interaction): return
@@ -226,14 +227,14 @@ class sys(app_commands.Group):
             ilog('Exception in command /whitelist_modify:' + e, logtype= 'error', flag = 'command')
             await interaction.followup.send(ephemeral= True, embed=Embed(title="Exception occurred", description=str(e), color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
-class localsys(app_commands.Group):
+class localsys(Group):
     async def is_authorized(self, interaction: Interaction):
         i = interaction.user.id in configurations.owner_ids
         if not i:
             await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.", timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
         return i
     
-    @app_commands.command(name='update', description='system - update bot repo')
+    @command(name='update', description='system - update bot repo')
     async def update_bot(self, interaction: Interaction, ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
         if not await self.is_authorized(interaction): return
@@ -244,13 +245,13 @@ class localsys(app_commands.Group):
         
         await interaction.followup.send(embed=Embed(title="Done", color=Color.green(), description='Successfully updated the bot repo on Github.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
 
-    @app_commands.command(name='version', description='system - check the code version')
+    @command(name='version', description='system - check the code version')
     async def version(self, interaction: Interaction, ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
         if not await self.is_authorized(interaction): return
         await interaction.followup.send(ephemeral=ephemeral, embed=Embed(color=Color.green(), title = 'Bot version:', description= f'Bot version {configurations.bot_version} {"[outdated]" if not check_bot_version(configurations.bot_version) else "[up-to-date]"}', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
-    @app_commands.command(name='restart', description='system - Restart the bot')
+    @command(name='restart', description='system - Restart the bot')
     async def restartbot(self, interaction: Interaction, ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
         if not await self.is_authorized(interaction): return
@@ -262,8 +263,8 @@ class localsys(app_commands.Group):
         await asyncio.sleep(5)
         system('kill 1')
 
-    @app_commands.command(name = 'maintenance', description='Toggle maintenance mode for supported commands')
-    @app_commands.describe(status_to_set = 'Status of maintenance to set into the database')
+    @command(name = 'maintenance', description='Toggle maintenance mode for supported commands')
+    @describe(status_to_set = 'Status of maintenance to set into the database')
     async def maintenance(self, interaction: Interaction, status_to_set: bool = False):
         await interaction.response.defer(ephemeral = True)
         if not await self.is_authorized(interaction): return
@@ -285,8 +286,9 @@ FEATURE COMMANDS (beta)
 -------------------------------------------------
 """
 @tree.command(name='screenshot', description='BETA - Take a screenshot of a website')
-@app_commands.describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s) (default: 0)', resolution = '(Will be overwritten if you are not botadmin.) Resolution of the driver window (Default: 720)', ephemeral = 'if you want to public the bot response to all users, make this True, else False. (default: False)', engine = 'for advanced user only: Engine used for the screenshot (default: selenium)')
-async def screenshot(interaction: Interaction, url: str, delay: int = 0, resolution: typing.Literal[240, 360, 480, 720, 1080, 1440, 2160] = 720, engine: typing.Literal['selenium', 'playwright'] = 'selenium', ephemeral: bool = False):
+@describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s) (default: 0)', resolution = '(Will be overwritten if you are not botadmin.) Resolution of the driver window (Default: 720)', ephemeral = 'if you want to public the bot response to all users, make this True, else False. (default: False)', engine = 'for advanced user only: Engine used for the screenshot (default: selenium)')
+@choices(resolution = [Choice(value=i, name=k) for i, k in [(240, '240p - Minimum'), (360, '360p - Website'), (480, '480p - Standard'), (720, '720p - HD'), (1080, '1080p - FullHD'), (1440, '1440p - 2K'), (2160, '2160p - 4K')]])
+async def screenshot(interaction: Interaction, url: str, delay: int = 0, resolution: Choice[int] = 720, engine: typing.Literal['selenium', 'playwright'] = 'selenium', ephemeral: bool = False):
     global global_ratelimit
     await interaction.response.defer(ephemeral = ephemeral)
     # conditions to stop executing the command
@@ -327,7 +329,7 @@ FEATURE COMMANDS (official)
 /uptime
 """
 @tree.command(name='echo', description='removing soon - Echo the provided string to the user')
-@app_commands.describe(string='String to echo')
+@describe(string='String to echo')
 async def echo(interaction: Interaction, string: str, ephemeral: bool = True):
     if interaction.user.id not in configurations.owner_ids:
         ephemeral = True
