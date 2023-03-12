@@ -7,6 +7,10 @@ Env:
 from discord import app_commands, Intents, Client, Interaction, Object, Embed, File, Game, Status, Color, Member, ui, ButtonStyle
 from jsondb import get_whitelist, update_whitelist, beta_check, check_bot_version
 import logging, json, typing, functools, traceback, asyncio, requests
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
 from playwright.async_api import async_playwright
 from selenium import webdriver
 from logger import CustomFormatter, ilog
@@ -41,7 +45,7 @@ class configurations:
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
-    bot_version = 'v0.3' # ignore
+    bot_version = 'v0.3.1' # ignore
     not_builder = bool(environ.get('not_builder', False))
 
 intents = Intents.default()
@@ -54,8 +58,10 @@ async def antiblock(blocking_func: typing.Callable, *args, **kwargs) -> typing.A
     func = functools.partial(blocking_func, *args, **kwargs)
     return await client.loop.run_in_executor(None, func)
 
-"""async def get_screenshot(url, window_height: int, window_width: int, delay: int= 7):
+async def get_screenshot_selenium(url, resolution: int, delay: int = 7):
     global ip
+    window_height = int(resolution*16/9)
+    window_width = resolution
     options = Options()
     for arg in ['--no-sandbox', '--disable-dev-shm-usage', '--headless', '--disable-gpu', '--window-position=0,0', f'--window-size={window_height},{window_width}', '--enable-features=WebContentsForceDark']: options.add_argument(arg)
     prefs = {
@@ -74,9 +80,9 @@ async def antiblock(blocking_func: typing.Callable, *args, **kwargs) -> typing.A
         elements = driver.find_elements(By.XPATH, f"//*[contains(text(), '{ip}')]")
         for element in elements: driver.execute_script("arguments[0].innerText = arguments[1];", element, '<the host ip address>')
         image_bytes = driver.get_screenshot_as_png()
-    return image_bytes"""
+    return image_bytes
 
-async def get_screenshot(url: str, resolution: int, delay: int = 7):
+async def get_screenshot_playwright(url: str, resolution: int, delay: int = 7):
     global ip
     window_height = int(resolution*16/9)
     window_width = resolution
@@ -279,8 +285,8 @@ FEATURE COMMANDS (beta)
 -------------------------------------------------
 """
 @tree.command(name='screenshot', description='BETA - Take a screenshot of a website')
-@app_commands.describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s)', resolution = '(Will be overwritten if you are not botadmin.) Resolution of the driver window, e.g 720 -> 720p', ephemeral = 'if you want to public the bot response to all users, make this True, else False.')
-async def screenshot(interaction: Interaction, url: str, delay: int = 0, resolution: int = 720, ephemeral: bool = False):
+@app_commands.describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s) (default: 0)', resolution = '(Will be overwritten if you are not botadmin.) Resolution of the driver window (Default: 720)', ephemeral = 'if you want to public the bot response to all users, make this True, else False. (default: False)', engine = 'for advanced user only: Engine used for the screenshot (default: selenium)')
+async def screenshot(interaction: Interaction, url: str, delay: int = 0, resolution: typing.Literal[240, 360, 480, 720, 1080, 1440, 2160] = 720, engine: typing.Literal['selenium', 'playwright'] = 'selenium', ephemeral: bool = False):
     global global_ratelimit
     await interaction.response.defer(ephemeral = ephemeral)
     # conditions to stop executing the command
@@ -306,7 +312,7 @@ async def screenshot(interaction: Interaction, url: str, delay: int = 0, resolut
         return
     await asyncio.sleep(2)
     global_ratelimit += 1
-    image_bytes = await get_screenshot(url=url, resolution=resolution, delay = delay)
+    image_bytes = await get_screenshot_selenium(url=url, resolution=resolution, delay = delay) if engine == 'selenium' else await get_screenshot_playwright(url=url, resolution=resolution, delay=delay)
     embed = Embed(title='Success',description=f'Here is the website screenshot of {url}', color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
     embed.set_image(url='attachment://screenshot.png')
     await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
