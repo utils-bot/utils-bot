@@ -14,7 +14,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from playwright.async_api import async_playwright
 from selenium import webdriver
-from undetected_chromedriver import Chrome, ChromeOptions
+
 from logger import CustomFormatter, ilog
 from os import environ, system
 from datetime import datetime
@@ -43,14 +43,14 @@ DEFINING VARS
 class configurations:
     bot_token = environ.get('bot_token') 
     owner_ids = [806432782111735818]
-    owner_guild_id = environ.get('owner_guild_id', 0)
+    owner_guild_id = 1070724751284256939
     beta = True
     max_global_ratelimit = 2
     default_maintenance_status = False
     bot_version = 'v0.3.3a' # ignore
     not_builder = bool(environ.get('not_builder', False))
     # ipinfo_api_key: str = environ.get('ipinfo_api_key', '')
-    chromedriver_path = environ.get('chromedriver_path', '/nix/store/i85kwq4r351qb5m7mrkl2grv34689l6b-chromedriver-108.0.5359.71/bin/chromedriver')
+    # chromedriver_path = environ.get('chromedriver_path', '/nix/store/i85kwq4r351qb5m7mrkl2grv34689l6b-chromedriver-108.0.5359.71/bin/chromedriver')
 
 intents = Intents.default()
 intents.members = True
@@ -86,7 +86,7 @@ async def get_screenshot_selenium(url, resolution: int, delay: int = 7):
         image_bytes = driver.get_screenshot_as_png()
     return image_bytes
 
-async def get_screenshot_undetected_chromedriver(url, resolution: int, delay: int = 7):
+"""async def get_screenshot_undetected_chromedriver(url, resolution: int, delay: int = 7):
     global ip
     window_height = int(resolution*16/9)
     window_width = resolution
@@ -108,7 +108,7 @@ async def get_screenshot_undetected_chromedriver(url, resolution: int, delay: in
         elements = driver.find_elements(By.XPATH, f"//*[contains(text(), '{ip}')]")
         for element in elements: driver.execute_script("arguments[0].innerText = arguments[1];", element, '<the host ip address>')
         image_bytes = driver.get_screenshot_as_png()
-    return image_bytes
+    return image_bytes"""
 
 async def get_screenshot_playwright(url: str, resolution: int, delay: int = 7):
     global ip
@@ -328,7 +328,7 @@ class network(Group):
         return i and k
     @command(name='screenshot', description='BETA - Take a screenshot of a website')
     @describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s) (default: 0)', resolution = 'Resolution of the driver window (Default: 720p)', ephemeral = 'If you want to make the response only visible to you. (default: False)', engine = 'for advanced user only: Engine used for the screenshot (default: selenium)')
-    @choices(resolution = [Choice(value=i, name=k) for i, k in [(240, '240p - Minimum'), (360, '360p - Website'), (480, '480p - Standard'), (720, '720p - HD'), (1080, '1080p - Full HD'), (1440, '1440p - 2K'), (2160, '2160p - 4K')]], engine = [Choice(value=i, name=k) for i, k in [('selenium', 'Selenium + Chromium'), ('playwright', 'Playwright + Chromium'), ('undetected_selenium', 'Selenium + Undetected Chromium (for bypassing)')]])
+    @choices(resolution = [Choice(value=i, name=k) for i, k in [(240, '240p - Minimum'), (360, '360p - Website'), (480, '480p - Standard'), (720, '720p - HD'), (1080, '1080p - Full HD'), (1440, '1440p - 2K'), (2160, '2160p - 4K')]], engine = [Choice(value=i, name=k) for i, k in [('selenium', 'Selenium + Chromium'), ('playwright', 'Playwright + Chromium')]]) # , ('undetected_selenium', 'Selenium + Undetected Chromium (for bypassing)')
     async def screenshot(self, interaction: Interaction, url: str, delay: int = 0, resolution: int = 720, engine: str = 'selenium', ephemeral: bool = False):
         global global_ratelimit
         await interaction.response.defer(ephemeral = ephemeral)
@@ -348,7 +348,7 @@ class network(Group):
             return
         await asyncio.sleep(2)
         global_ratelimit += 1
-        ssfunc = get_screenshot_selenium if engine == 'selenium' else get_screenshot_playwright if engine == 'playwright' else get_screenshot_undetected_chromedriver
+        ssfunc = get_screenshot_selenium if engine == 'selenium' else get_screenshot_playwright if engine == 'playwright' else '' # get_screenshot_undetected_chromedriver
         image_bytes = await ssfunc(url=url, resolution=resolution, delay=delay)
         embed = Embed(title='Success',description=f'Here is the website screenshot of {url}', color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         embed.set_image(url='attachment://screenshot.png')
