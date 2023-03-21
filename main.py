@@ -8,17 +8,11 @@ from discord import Intents, Client, Interaction, Object, Embed, File, Game, Sta
 from discord.app_commands import CommandTree, Group, command, Choice, choices, describe
 from jsondb import get_whitelist, update_whitelist, beta_check, check_bot_version
 import logging, json, typing, functools, traceback, asyncio, requests
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from playwright.async_api import async_playwright
-from selenium import webdriver
-
+from aiohttp import ClientSession
 from logger import CustomFormatter, ilog
 from os import environ, system
 from datetime import datetime
-from time import sleep, time
+from time import time
 from keep_alive import ka
 from io import BytesIO
 # from enum import Enum
@@ -41,14 +35,16 @@ DEFINING VARS
 -------------------------------------------------
 """
 class configurations:
+    bot_version = 'v0.3.4'
     bot_token = environ.get('bot_token') 
     owner_ids = [806432782111735818]
     owner_guild_id = 1070724751284256939
     beta = True
     max_global_ratelimit = 2
-    default_maintenance_status = False
-    bot_version = 'v0.3.3a' # ignore
-    not_builder = bool(environ.get('not_builder', False))
+    default_maintenance_status = False  # ignore
+    not_builder = bool(environ.get('not_builder', ''))
+    screenshotapi = environ.get('SCREENSHOT_API_URL', 'https://example.com/replace/with/your/own/endpoint')
+    screenshotsecret = environ.get("SCREENSHOT_API_SECRET", 'blablablathisisaAPIkey')
     # ipinfo_api_key: str = environ.get('ipinfo_api_key', '')
     # chromedriver_path = environ.get('chromedriver_path', '/nix/store/i85kwq4r351qb5m7mrkl2grv34689l6b-chromedriver-108.0.5359.71/bin/chromedriver')
 
@@ -62,71 +58,15 @@ async def antiblock(blocking_func: typing.Callable, *args, **kwargs) -> typing.A
     func = functools.partial(blocking_func, *args, **kwargs)
     return await client.loop.run_in_executor(None, func)
 
-async def get_screenshot_selenium(url, resolution: int, delay: int = 7):
-    global ip
-    window_height = int(resolution*16/9)
-    window_width = resolution
-    options = Options()
-    for arg in ['--no-sandbox', '--disable-dev-shm-usage', '--headless', '--disable-gpu', '--window-position=0,0', f'--window-size={window_height},{window_width}', '--enable-features=WebContentsForceDark']: options.add_argument(arg)
-    prefs = {
-    "download_restrictions": 3,
-    "download.open_pdf_in_system_reader": False,
-    "download.prompt_for_download": True,
-    "download.default_directory": "/dev/null",
-    "plugins.always_open_pdf_externally": False
-    }
-    options.add_experimental_option("prefs", prefs)
-    with webdriver.Chrome(options=options) as driver:
-        driver.get(url)
-        wait = WebDriverWait(driver, 10)
-        wait.until(EC.presence_of_element_located((By.XPATH, "//body[not(@class='loading')]")))
-        await asyncio.sleep(3 + delay)
-        elements = driver.find_elements(By.XPATH, f"//*[contains(text(), '{ip}')]")
-        for element in elements: driver.execute_script("arguments[0].innerText = arguments[1];", element, '<the host ip address>')
-        image_bytes = driver.get_screenshot_as_png()
-    return image_bytes
+async def get_screenshot(url: str, resolution: int, delay: int):
+    async with ClientSession() as session:
+        headers = {'Authorization': f'Bearer {configurations.screenshotsecret}'}
+        params = {'url': url, 'resolution': resolution, 'delay': delay}
+        async with session.get(configurations.screenshotapi, headers=headers, params=params) as response:
+            response.raise_for_status()
+            image_binary = await response.read()
+    return image_binary
 
-"""async def get_screenshot_undetected_chromedriver(url, resolution: int, delay: int = 7):
-    global ip
-    window_height = int(resolution*16/9)
-    window_width = resolution
-    options = Options()
-    for arg in ['--no-sandbox', '--disable-dev-shm-usage', '--headless', '--disable-gpu', '--window-position=0,0', f'--window-size={window_height},{window_width}', '--enable-features=WebContentsForceDark']: options.add_argument(arg)
-    prefs = {
-    "download_restrictions": 3,
-    "download.open_pdf_in_system_reader": False,
-    "download.prompt_for_download": True,
-    "download.default_directory": "/dev/null",
-    "plugins.always_open_pdf_externally": False
-    }
-    options.add_experimental_option("prefs", prefs)
-    with Chrome(options=options, driver_executable_path=configurations.chromedriver_path) as driver:
-        driver.get(url)
-        wait = WebDriverWait(driver, 10)
-        wait.until(EC.presence_of_element_located((By.XPATH, "//body[not(@class='loading')]")))
-        await asyncio.sleep(3 + delay)
-        elements = driver.find_elements(By.XPATH, f"//*[contains(text(), '{ip}')]")
-        for element in elements: driver.execute_script("arguments[0].innerText = arguments[1];", element, '<the host ip address>')
-        image_bytes = driver.get_screenshot_as_png()
-    return image_bytes"""
-
-async def get_screenshot_playwright(url: str, resolution: int, delay: int = 7):
-    global ip
-    window_height = int(resolution*16/9)
-    window_width = resolution
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(downloads_path='/dev/null', headless=True, args=['--no-sandbox', '--disable-dev-shm-usage', '--headless', '--disable-gpu', '--window-position=0,0', '--enable-features=WebContentsForceDark'])
-        context = await browser.new_context(accept_downloads=False)
-        page = await context.new_page()
-        await page.set_viewport_size({"width": window_width, "height": window_height})
-        await page.goto(url)
-        await page.wait_for_selector("body:not(.loading)")
-        await asyncio.sleep(3 + delay)
-        elements = await page.query_selector_all(f"//*[contains(text(), '{ip}')]")
-        for element in elements: await element.evaluate(f"el => el.textContent = '{ip}'")
-        image_bytes = await page.screenshot()
-        browser.close()
-    return image_bytes
 
 async def get_ip_aiohttp(query: str):
     return
@@ -328,8 +268,8 @@ class network(Group):
         return i and k
     @command(name='screenshot', description='BETA - Take a screenshot of a website')
     @describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s) (default: 0)', resolution = 'Resolution of the driver window (Default: 720p)', ephemeral = 'If you want to make the response only visible to you. (default: False)', engine = 'for advanced user only: Engine used for the screenshot (default: selenium)')
-    @choices(resolution = [Choice(value=i, name=k) for i, k in [(240, '240p - Minimum'), (360, '360p - Website'), (480, '480p - Standard'), (720, '720p - HD'), (1080, '1080p - Full HD'), (1440, '1440p - 2K'), (2160, '2160p - 4K')]], engine = [Choice(value=i, name=k) for i, k in [('selenium', 'Selenium + Chromium'), ('playwright', 'Playwright + Chromium')]]) # , ('undetected_selenium', 'Selenium + Undetected Chromium (for bypassing)')
-    async def screenshot(self, interaction: Interaction, url: str, delay: int = 0, resolution: int = 720, engine: str = 'selenium', ephemeral: bool = False):
+    @choices(resolution = [Choice(value=i, name=k) for i, k in [(240, '240p - Minimum'), (360, '360p - Website'), (480, '480p - Standard'), (720, '720p - HD'), (1080, '1080p - Full HD'), (1440, '1440p - 2K'), (2160, '2160p - 4K')]]) # , ('undetected_selenium', 'Selenium + Undetected Chromium (for bypassing)') # engine = [Choice(value=i, name=k) for i, k in [('selenium', 'Selenium + Chromium'), ('playwright', 'Playwright + Chromium')]]
+    async def screenshot(self, interaction: Interaction, url: str, delay: int = 0, resolution: int = 720, ephemeral: bool = False):
         global global_ratelimit
         await interaction.response.defer(ephemeral = ephemeral)
         # conditions to stop executing the command
@@ -348,15 +288,12 @@ class network(Group):
             return
         await asyncio.sleep(2)
         global_ratelimit += 1
-        ssfunc = get_screenshot_selenium if engine == 'selenium' else get_screenshot_playwright if engine == 'playwright' else '' # get_screenshot_undetected_chromedriver
+        ssfunc = get_screenshot # get_screenshot_undetected_chromedriver
         image_bytes = await ssfunc(url=url, resolution=resolution, delay=delay)
         embed = Embed(title='Success',description=f'Here is the website screenshot of {url}', color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         embed.set_image(url='attachment://screenshot.png')
         await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
         global_ratelimit += -1
-    """@command(name = 'ip', description='Get detailed information of a IP address')
-    async def ip(self, interaction: Interaction, url: str, delay: int):
-        return"""
 tree.add_command(network())
 """
 -------------------------------------------------
@@ -390,7 +327,6 @@ async def on_ready():
     global global_ratelimit
     global maintenance_status
     global unix_uptime
-    global ip 
     unix_uptime = round(time())
     global_ratelimit = 0
     maintenance_status = configurations.default_maintenance_status
@@ -406,8 +342,7 @@ async def on_ready():
     ilog('Connected to ' + str(guilds_num) + ' guilds and ' + str(members_num)  + ' users.', 'init', 'info')
     await asyncio.sleep(2)
     await client.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
-    ip = requests.get('https://ipv4.icanhazip.com').text
-    ilog(f"This machine's IPv4 address is {ip}", 'init', 'info')
+
 
 """
 -------------------------------------------------
