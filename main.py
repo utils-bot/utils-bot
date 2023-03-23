@@ -3,11 +3,13 @@ Env:
 - Bot token -> .env:bot_token
 - Owner guild id -> .env:owner_guild_id
 - Random quotes -> .env:not_builder
+- URL of Screenshot API server -> .env:SCREENSHOT_API_URL
+- API Key for Screenshot API server -> .env:SCREENSHOT_API_SECRET
 ---------------------------------------------"""
 from discord import Intents, Client, Interaction, Object, Embed, File, Game, Status, Color, Member
 from discord.app_commands import CommandTree, Group, command, Choice, choices, describe
 from jsondb import get_whitelist, update_whitelist, beta_check, check_bot_version
-import logging, json, typing, functools, traceback, asyncio, requests
+import logging, json, typing, functools, traceback, asyncio
 from aiohttp import ClientSession
 from logger import CustomFormatter, ilog
 from os import environ, system
@@ -58,15 +60,34 @@ async def antiblock(blocking_func: typing.Callable, *args, **kwargs) -> typing.A
     func = functools.partial(blocking_func, *args, **kwargs)
     return await client.loop.run_in_executor(None, func)
 
-async def get_screenshot(url: str, resolution: int, delay: int):
+async def get_screenshot(url, resolution, delay=7, api_url=configurations.screenshotapi, token=configurations.screenshotsecret):
+    headers = {'Authorization': f'Bearer {token}'}
+    params = {'url': url, 'resolution': resolution, 'delay': delay}
     async with ClientSession() as session:
-        headers = {'Authorization': f'Bearer {configurations.screenshotsecret}'}
-        params = {'url': url, 'resolution': resolution, 'delay': delay}
-        async with session.get(configurations.screenshotapi, headers=headers, params=params) as response:
+        async with session.get(api_url, headers=headers, params=params) as response:
             response.raise_for_status()
-            image_binary = await response.read()
-    return image_binary
+            image_data = await response.read()
+    return image_data
 
+async def get_ip_info(ip):
+    async with ClientSession() as session:
+        async with session.get(f'https://ipinfo.io/{ip}') as response:
+            data = await response.json()
+        return data
+"""
+            city = data['city']
+            region = data['region']
+            country = data['country']
+            loc = data['loc']
+            org = data['org']
+            postal = data['postal']
+            timezone = data['timezone']
+            return city, region, country, loc, org, postal, timezone
+"""
+
+def is_valid_ipv4(ip):
+    parts = ip.split('.')
+    return len(parts) == 4 and all(part.isdigit() and 0 <= int(part) <= 255 for part in parts)
 
 async def get_ip_aiohttp(query: str):
     return
