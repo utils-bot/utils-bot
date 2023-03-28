@@ -61,10 +61,9 @@ async def antiblock(blocking_func: typing.Callable, *args, **kwargs) -> typing.A
     return await client.loop.run_in_executor(None, func)
 
 async def get_screenshot(url, resolution, delay=7, api_url=configurations.screenshotapi, token=configurations.screenshotsecret):
-    headers = {'Authorization': f'Bearer {token}'}
-    params = {'url': url, 'resolution': resolution, 'delay': delay}
+    params = {'url': url, 'resolution': resolution, 'delay': delay, 'authorization': token}
     async with ClientSession() as session:
-        async with session.get(api_url, headers=headers, params=params) as response:
+        async with session.get(api_url, params=params) as response:
             response.raise_for_status()
             image_data = await response.read()
     return image_data
