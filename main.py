@@ -37,7 +37,7 @@ DEFINING VARS
 -------------------------------------------------
 """
 class configurations:
-    bot_version = 'v0.3.5'
+    bot_version = 'v0.3.5a'
     bot_token = environ.get('bot_token') 
     owner_ids = [806432782111735818]
     owner_guild_id = 1070724751284256939
@@ -313,7 +313,10 @@ class net(Group):
         embed.set_image(url='attachment://screenshot.png')
         await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
         global_ratelimit += -1
-    async def ip(self, interaction: Interaction, ipv4: str = "8.8.8.8", ephemeral: bool = False):
+    @command(name = 'ip', description='Use APIs to fetch information about a IPv4 address.')
+    @describe(ipv4 = "The IPv4 address you want to fetch.")
+    # @choices(ipv4 = [Choice(value = i) for i in [f"{x}.{y}.{z}.{t}" for x in range(0, 255) for y in range(0, 255) for z in range(0, 255) for t in range(0, 255)]])
+    async def ip(self, interaction: Interaction, ipv4: str, ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
         if not await self.is_authorized(interaction): return
         if not (lambda ip: len(x:= ip.split('.')) == 4 and all(part.isdigit() and 0 <= int(part) <= 255 for part in x))(ipv4):
