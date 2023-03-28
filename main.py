@@ -9,7 +9,7 @@ Env:
 from discord import Intents, Client, Interaction, Object, Embed, File, Game, Status, Color, Member
 from discord.app_commands import CommandTree, Group, command, Choice, choices, describe
 from jsondb import get_whitelist, update_whitelist, beta_check, check_bot_version
-import logging, json, typing, functools, traceback, asyncio
+import logging, json, typing, functools, traceback, asyncio, json
 from aiohttp import ClientSession
 from logger import CustomFormatter, ilog
 from os import environ, system
@@ -37,7 +37,7 @@ DEFINING VARS
 -------------------------------------------------
 """
 class configurations:
-    bot_version = 'v0.3.4'
+    bot_version = 'v0.3.5'
     bot_token = environ.get('bot_token') 
     owner_ids = [806432782111735818]
     owner_guild_id = 1070724751284256939
@@ -69,25 +69,6 @@ async def get_screenshot(url, resolution, delay=7, api_url=configurations.screen
             image_data = await response.read()
     return image_data
 
-async def get_ip_info(ip):
-    async with ClientSession() as session:
-        async with session.get(f'https://ipinfo.io/{ip}') as response:
-            data = await response.json()
-        return data
-"""
-            city = data['city']
-            region = data['region']
-            country = data['country']
-            loc = data['loc']
-            org = data['org']
-            postal = data['postal']
-            timezone = data['timezone']
-            return city, region, country, loc, org, postal, timezone
-"""
-
-def is_valid_ipv4(ip):
-    parts = ip.split('.')
-    return len(parts) == 4 and all(part.isdigit() and 0 <= int(part) <= 255 for part in parts)
 
 async def get_ip_aiohttp(query: str):
     return
@@ -278,7 +259,25 @@ FEATURE COMMANDS (beta)
 /rps
 -------------------------------------------------
 """
-class network(Group):
+
+async def get_ip_info(ip) -> dict:
+    async with ClientSession() as session:
+        async with session.get(f'https://ipinfo.io/{ip}') as response:
+            data = await response.json()
+            data = json.loads(data)
+        return data
+"""
+            city = data['city']
+            region = data['region']
+            country = data['country']
+            loc = data['loc']
+            org = data['org']
+            postal = data['postal']
+            timezone = data['timezone']
+            return city, region, country, loc, org, postal, timezone
+"""
+
+class net(Group):
     async def is_authorized(self, interaction: Interaction):
         i = (beta_check(user = interaction.user.id, beta_bool = configurations.beta)) or (interaction.user.id in configurations.owner_ids)
         if not i:
@@ -288,7 +287,7 @@ class network(Group):
             await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.', color=Color.yellow(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
         return i and k
     @command(name='screenshot', description='BETA - Take a screenshot of a website')
-    @describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s) (default: 0)', resolution = 'Resolution of the driver window (Default: 720p)', ephemeral = 'If you want to make the response only visible to you. (default: False)', engine = 'for advanced user only: Engine used for the screenshot (default: selenium)')
+    @describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s) (default: 0)', resolution = 'Resolution of the driver window (Default: 720p)', ephemeral = 'If you want to make the response only visible to you. (default: False)')
     @choices(resolution = [Choice(value=i, name=k) for i, k in [(240, '240p - Minimum'), (360, '360p - Website'), (480, '480p - Standard'), (720, '720p - HD'), (1080, '1080p - Full HD'), (1440, '1440p - 2K'), (2160, '2160p - 4K')]]) # , ('undetected_selenium', 'Selenium + Undetected Chromium (for bypassing)') # engine = [Choice(value=i, name=k) for i, k in [('selenium', 'Selenium + Chromium'), ('playwright', 'Playwright + Chromium')]]
     async def screenshot(self, interaction: Interaction, url: str, delay: int = 0, resolution: int = 720, ephemeral: bool = False):
         global global_ratelimit
@@ -308,14 +307,25 @@ class network(Group):
             await interaction.followup.send(embed=Embed(color=Color.red(), title='Rate-limited', description='Bot is currently global rate-limited, please try again later', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral= True)
             return
         await asyncio.sleep(2)
-        global_ratelimit += 1
-        ssfunc = get_screenshot # get_screenshot_undetected_chromedriver
-        image_bytes = await ssfunc(url=url, resolution=resolution, delay=delay)
+        global_ratelimit += 1 # get_screenshot_undetected_chromedriver
+        image_bytes = await get_screenshot(url=url, resolution=resolution, delay=delay)
         embed = Embed(title='Success',description=f'Here is the website screenshot of {url}', color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         embed.set_image(url='attachment://screenshot.png')
         await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
         global_ratelimit += -1
-tree.add_command(network())
+    async def ip(self, interaction: Interaction, ipv4: str = "8.8.8.8", ephemeral: bool = False):
+        await interaction.response.defer(ephemeral=ephemeral)
+        if not await self.is_authorized(interaction): return
+        if not (lambda ip: len(x:= ip.split('.')) == 4 and all(part.isdigit() and 0 <= int(part) <= 255 for part in x))(ipv4):
+            await interaction.followup.send(embed=Embed(title='Error', description='Input IPv4 address is invalid.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
+            return
+        ipdata = await get_ip_info(ipv4)
+        embed = Embed(title=f"IPv4 {ipv4}", description= f"Here's the information for {ipv4}:")
+        for name, val in [('City', 'city'), ('Region', 'region'), ('Country', 'country'), ('Location', 'loc'), ('Organization', 'org'), ('Postal Code', 'postal'), ('Timezone', 'timezone')]: embed.add_field(name, ipdata[val])
+        embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
+        await interaction.followup.send(embed = embed, ephemeral=ephemeral)
+
+tree.add_command(net())
 """
 -------------------------------------------------
 FEATURE COMMANDS (official)
