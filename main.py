@@ -61,9 +61,10 @@ async def antiblock(blocking_func: typing.Callable, *args, **kwargs) -> typing.A
     return await client.loop.run_in_executor(None, func)
 
 async def get_screenshot(url, resolution, delay=7, api_url=configurations.screenshotapi, token=configurations.screenshotsecret):
-    params = {'url': url, 'resolution': resolution, 'delay': delay, 'authorization': token}
+    params = {'url': url, 'resolution': resolution, 'delay': delay} #, 'authorization': token}
+    headers = {'authorization': token}
     async with ClientSession() as session:
-        async with session.get(api_url, params=params) as response:
+        async with session.get(api_url, params=params, headers=headers) as response:
             response.raise_for_status()
             image_data = await response.read()
     return image_data
@@ -314,13 +315,14 @@ class net(Group):
             embed.add_field(name="Data Center", value=f'`{ipdata["data_center"]}`', inline=True)
             embed.add_field(name="\u200B", value="", inline=False)
             try:
-                embed.add_field(name="Country", value=f'`{ipdata["geo"]["country"]}`', inline=True)
+                embed.add_field(name="Country", value=f'`{ipdata["geo"]["country"]} | {ipdata["geo"]["country_code"]} {ipdata["geo"]["country_flag_emoji"]}`', inline=True)
                 embed.add_field(name="City", value=f'`{ipdata["geo"]["city"]}`', inline=True)
+                embed.add_field(name="Region", value=f'`{ipdata["geo"]["region"]} | {ipdata["geo"]["region_code"]}`', inline=True)
                 embed.add_field(name="\u200B", value="", inline=False)
             except: pass # optional data
             embed.add_field(name="Network Route", value=f'`{ipdata["network"]["route"]}`', inline=True)
             embed.add_field(name="AS Number", value=f'`{ipdata["network"]["as_number"]}`', inline=True)
-            embed.add_field(name="AS Orgs", value=f'`{ipdata["network"]["as_org"]} | {ipdata["network"]["as_org_alt"]}`', inline=True)
+            embed.add_field(name="AS Organization", value=f'`{ipdata["network"]["as_org"]} | {ipdata["network"]["as_org_alt"]}`', inline=True)
         else:
             embed.add_field(name="Status", value = f"``{ipdata['status']}``")
         embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
