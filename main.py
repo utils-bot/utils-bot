@@ -68,10 +68,6 @@ async def get_screenshot(url, resolution, delay=7, api_url=configurations.screen
             image_data = await response.read()
     return image_data
 
-
-async def get_ip_aiohttp(query: str):
-    return
-
 async def get_redirect_history_aiohttp(url: str, ):
     return
 
@@ -261,20 +257,10 @@ FEATURE COMMANDS (beta)
 
 async def get_ip_info(ip) -> dict:
     async with ClientSession() as session:
-        async with session.get(f'https://ipinfo.io/{ip}') as response:
+        async with session.get(f'https://api.iprisk.info/v1/{ip}') as response:
             data = await response.json()
             data = json.loads(data)
         return data
-"""
-            city = data['city']
-            region = data['region']
-            country = data['country']
-            loc = data['loc']
-            org = data['org']
-            postal = data['postal']
-            timezone = data['timezone']
-            return city, region, country, loc, org, postal, timezone
-"""
 
 class net(Group):
     async def is_authorized(self, interaction: Interaction):
@@ -323,7 +309,16 @@ class net(Group):
             return
         ipdata = await get_ip_info(ipv4)
         embed = Embed(title=f"IPv4 {ipv4}", description= f"Here's the information for {ipv4}:")
-        for name, val in [('City', 'city'), ('Region', 'region'), ('Country', 'country'), ('Location', 'loc'), ('Organization', 'org'), ('Postal Code', 'postal'), ('Timezone', 'timezone')]: embed.add_field(name, ipdata[val])
+        # embed.add_field(name, ipdata[val])
+        embed.add_field(name="IP", value=f'`{ipdata["ip"]}`', inline=True)
+        embed.add_field(name="Data Center", value=f'`{ipdata["data_center"]}`', inline=True)
+        embed.add_field(name="\u200B", value="\u200B", inline=False)
+        embed.add_field(name="Country", value=f'`{ipdata["geo"]["country"]}`', inline=True)
+        embed.add_field(name="City", value=f'`{ipdata["geo"]["city"]}`', inline=True)
+        embed.add_field(name="\u200B", value="\u200B", inline=False)
+        embed.add_field(name="Network Route", value=f'`{ipdata["network"]["route"]}`', inline=True)
+        embed.add_field(name="AS Number", value=f'`{ipdata["network"]["as_number"]}`', inline=True)
+        embed.add_field(name="AS Orgs", value=f'`{ipdata["network"]["as_org"]}, {ipdata["network"]["as_org_alt"]}`', inline=True)
         embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         await interaction.followup.send(embed = embed, ephemeral=ephemeral)
 
