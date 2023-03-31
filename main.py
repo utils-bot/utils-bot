@@ -312,11 +312,11 @@ class net(Group):
         if ipdata['status'] == "success":
             embed.add_field(name="IP", value=f'`{ipdata["ip"]}`', inline=True)
             embed.add_field(name="Data Center", value=f'`{ipdata["data_center"]}`', inline=True)
-            embed.add_field(name="\u200B", value="\u200B", inline=False)
+            embed.add_field(name="\u200B", value="", inline=False)
             try:
                 embed.add_field(name="Country", value=f'`{ipdata["geo"]["country"]}`', inline=True)
                 embed.add_field(name="City", value=f'`{ipdata["geo"]["city"]}`', inline=True)
-                embed.add_field(name="\u200B", value="\u200B", inline=False)
+                embed.add_field(name="\u200B", value="", inline=False)
             except: pass # optional data
             embed.add_field(name="Network Route", value=f'`{ipdata["network"]["route"]}`', inline=True)
             embed.add_field(name="AS Number", value=f'`{ipdata["network"]["as_number"]}`', inline=True)
