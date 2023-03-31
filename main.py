@@ -319,7 +319,7 @@ class net(Group):
         except: pass # optional data
         embed.add_field(name="Network Route", value=f'`{ipdata["network"]["route"]}`', inline=True)
         embed.add_field(name="AS Number", value=f'`{ipdata["network"]["as_number"]}`', inline=True)
-        embed.add_field(name="AS Orgs", value=f'`{ipdata["network"]["as_org"]}, {ipdata["network"]["as_org_alt"]}`', inline=True)
+        embed.add_field(name="AS Orgs", value=f'`{ipdata["network"]["as_org"]} | {ipdata["network"]["as_org_alt"]}`', inline=True)
         embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         await interaction.followup.send(embed = embed, ephemeral=ephemeral)
 
