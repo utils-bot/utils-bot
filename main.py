@@ -307,7 +307,7 @@ class net(Group):
             await interaction.followup.send(embed=Embed(title='Error', description='Input IPv4 address is invalid.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
             return
         ipdata = await get_ip_info(ipv4)
-        embed = Embed(title=f"IPv4 {ipv4}", description= f"Here's the information for {ipv4}:")
+        embed = Embed(title=f"IPv4 {ipv4}", description= f"Here's the information for {ipv4}:", color = Color.green())
         # embed.add_field(name, ipdata[val])
         embed.add_field(name="IP", value=f'`{ipdata["ip"]}`', inline=True)
         embed.add_field(name="Data Center", value=f'`{ipdata["data_center"]}`', inline=True)
