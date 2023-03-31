@@ -37,7 +37,7 @@ DEFINING VARS
 -------------------------------------------------
 """
 class configurations:
-    bot_version = 'v0.3.5a'
+    bot_version = 'v0.3.6'
     bot_token = environ.get('bot_token') 
     owner_ids = [806432782111735818]
     owner_guild_id = 1070724751284256939
@@ -115,7 +115,7 @@ BASE COMMANDS
 |-- whitelist
     |-- list
     |-- modify
-/localsys
+/locsys
 |-- update
 |-- version
 |-- restart
@@ -197,7 +197,7 @@ class sys(Group):
             ilog('Exception in command /whitelist_modify:' + e, logtype= 'error', flag = 'command')
             await interaction.followup.send(ephemeral= True, embed=Embed(title="Exception occurred", description=str(e), color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
-class localsys(Group):
+class locsys(Group):
     async def is_authorized(self, interaction: Interaction):
         i = interaction.user.id in configurations.owner_ids
         if not i:
@@ -244,7 +244,7 @@ class localsys(Group):
         await interaction.followup.send(embed=Embed(color=Color.green(), title='Success', description=f'Maintenance status changed: {old} -> {maintenance_status}', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
 
-tree.add_command(localsys(), guild=Object(id=configurations.owner_guild_id))
+tree.add_command(locsys(), guild=Object(id=configurations.owner_guild_id))
 tree.add_command(sys())
 
 
@@ -308,7 +308,7 @@ class net(Group):
             await interaction.followup.send(embed=Embed(title='Error', description='Input IPv4 address is invalid.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
             return
         ipdata = await get_ip_info(ipv4)
-        embed = Embed(title=f"IPv4 {ipv4}", description= f"Here's the information for {ipv4}:", color = Color.green())
+        embed = Embed(title=f"IP information", description= f"Here's the information for ``{ipv4}``:", color = Color.green())
         # embed.add_field(name, ipdata[val])
         if ipdata['status'] == "success":
             embed.add_field(name="IP", value=f'`{ipdata["ip"]}`', inline=True)
