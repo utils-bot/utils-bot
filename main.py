@@ -315,8 +315,8 @@ class net(Group):
         try:
             embed.add_field(name="Country", value=f'`{ipdata["geo"]["country"]}`', inline=True)
             embed.add_field(name="City", value=f'`{ipdata["geo"]["city"]}`', inline=True)
+            embed.add_field(name="\u200B", value="\u200B", inline=False)
         except: pass # optional data
-        embed.add_field(name="\u200B", value="\u200B", inline=False)
         embed.add_field(name="Network Route", value=f'`{ipdata["network"]["route"]}`', inline=True)
         embed.add_field(name="AS Number", value=f'`{ipdata["network"]["as_number"]}`', inline=True)
         embed.add_field(name="AS Orgs", value=f'`{ipdata["network"]["as_org"]}, {ipdata["network"]["as_org_alt"]}`', inline=True)
