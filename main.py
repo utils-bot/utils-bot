@@ -259,7 +259,6 @@ async def get_ip_info(ip) -> dict:
     async with ClientSession() as session:
         async with session.get(f'https://api.iprisk.info/v1/{ip}') as response:
             data = await response.json()
-            data = json.loads(data)
         return data
 
 class net(Group):
