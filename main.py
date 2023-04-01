@@ -69,7 +69,7 @@ async def get_screenshot(url, resolution, delay=7, api_url=configurations.screen
             image_data = await response.read()
     return image_data
 
-async def get_redirect_history_aiohttp(url: str, ):
+async def get_redirect_history_aiohttp(url: str):
     return
 
 def build_mode():
@@ -102,9 +102,9 @@ async def on_error(interaction: Interaction, error):
     es = ('Check the console for more information.' if len(minlog) > 1000 else '') + f"```py\n{('...' if minlog_under800 != minlog else '') + minlog_under800}```" + f"```py\n{cleaned.splitlines()[-1]}```"
     # if (i:=interaction.user.id) in configurations.owner_guild_id or i in get_whitelist():
     ilog('Exception in a application command: ' + full_err + '--------------------end of exception--------------------', logtype= 'error', flag = 'command')
-    await interaction.followup.send(embed=Embed(title="Exception occurred:", description= es, color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+    await interaction.followup.send(embed=Embed(title="Exception occurred:", description= es, color=Color.red()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
     # else:
-        # await interaction.followup.send(embed=Embed(title="Exception occurred", description='Contact the bot owner(s) for more information.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+        # await interaction.followup.send(embed=Embed(title="Exception occurred", description='Contact the bot owner(s) for more information.', color=Color.red()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
 """-------------------------------------------------
 BASE COMMANDS
@@ -126,13 +126,13 @@ BASE COMMANDS
 async def sync(interaction: Interaction, ephemeral: bool = False):
     await interaction.response.defer(ephemeral=ephemeral)
     if interaction.user.id not in configurations.owner_ids:
-        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.", timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
+        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
         return
     await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
     tree.copy_global_to(guild = Object(id = configurations.owner_guild_id))
     await tree.sync()
     ilog(f'Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}', logtype = 'info', flag = 'tree')
-    await interaction.followup.send(embed=Embed(title="Command tree synced", color=Color.green(), description='Successfully synced the global command tree to all guilds', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
+    await interaction.followup.send(embed=Embed(title="Command tree synced", color=Color.green(), description='Successfully synced the global command tree to all guilds').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
     await client.change_presence(activity=Game('synced. reloading...'), status=Status.dnd)
     await asyncio.sleep(2)
     await client.change_presence(activity=Game('version ' + configurations.bot_version + ' [outdated]' if not check_bot_version(configurations.bot_version) else ""), status=Status.online)
@@ -141,21 +141,21 @@ class sys(Group):
     async def is_authorized(self, interaction: Interaction):
         i = interaction.user.id in configurations.owner_ids
         if not i:
-            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.", timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
+            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
         return i
 
     @command(name='eval', description='system - execute python scripts via eval()')
     async def scripteval(self, interaction: Interaction, script: str, ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
         if not await self.is_authorized(interaction): return
-        await interaction.followup.send(embed=Embed(color=Color.blue(), title='Executing...', description='Executing the script...', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), wait=True)
+        await interaction.followup.send(embed=Embed(color=Color.blue(), title='Executing...', description='Executing the script...').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), wait=True)
         await asyncio.sleep(0.5)
         ilog(f'{interaction.user.name}#{interaction.user.discriminator} ({interaction.user.id}) eval-ed: {script}', 'eval', 'warning')
         result = eval(script)
         if not result:
-            await interaction.followup.send(embed=Embed(title="Script executed", color=Color.green(), description='Script executed successfully, the result, might be `None` or too long to fill in here.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await interaction.followup.send(embed=Embed(title="Script executed", color=Color.green(), description='Script executed successfully, the result, might be `None` or too long to fill in here.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
         else:
-            await interaction.followup.send(embed=Embed(title="Result", description= "```py\n" + str(result) + "```", color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await interaction.followup.send(embed=Embed(title="Result", description= "```py\n" + str(result) + "```", color=Color.green()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
     @command(name = 'guilds', description= 'system - list guilds that the bot are currently in.')
     async def guilds(self, interaction: Interaction, ephemeral: bool = True):
         await interaction.response.defer(ephemeral=ephemeral)
@@ -176,14 +176,14 @@ class sys(Group):
         await interaction.response.defer(ephemeral=ephemeral)
         if not await self.is_authorized(interaction): return
 
-        embed = Embed(title='Whitelist list', description='Here is the list of beta-whitelisted user IDs:', color = Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
+        embed = Embed(title='Whitelist list', description='Here is the list of beta-whitelisted user IDs:', color = Color.green()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         current_list = ""
         for i in get_whitelist():
             current_list += f'<@{i}> ({i})\n'
         embed.add_field(name='Users:', value = current_list)
         await interaction.followup.send(embed=embed, ephemeral=ephemeral)
 
-    # @tree.command(name = 'whitelist_modify', description='Modify beta whitelist list in database.json', )
+    # @tree.command(name = 'whitelist_modify', description='Modify beta whitelist list in database.json')
     @whitelist.command(name = 'modify', description='system - Modify beta whitelist list in database.json')
     @describe(user = 'User that will be modified in the whitelist database', mode = 'add/remove the user from the database')
     async def whitelist_modify(self, interaction: Interaction, user: Member, mode: typing.Literal['add', 'remove'] = 'add', ephemeral: bool = False):
@@ -192,16 +192,16 @@ class sys(Group):
         
         try:
             update_status = update_whitelist(id = user.id, add = mode == 'add')
-            await interaction.followup.send(embed=Embed(title='Done', description=f'Successfully {"added" if mode == "add" else "removed"} this user in the list: {user.mention} ({user.id})', color = Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar) if update_status else Embed(title='Failed', description='A error occured', color = Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
+            await interaction.followup.send(embed=Embed(title='Done', description=f'Successfully {"added" if mode == "add" else "removed"} this user in the list: {user.mention} ({user.id})', color = Color.green()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar) if update_status else Embed(title='Failed', description='A error occured', color = Color.green()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
         except Exception as e:
             ilog('Exception in command /whitelist_modify:' + e, logtype= 'error', flag = 'command')
-            await interaction.followup.send(ephemeral= True, embed=Embed(title="Exception occurred", description=str(e), color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await interaction.followup.send(ephemeral= True, embed=Embed(title="Exception occurred", description=str(e), color=Color.red()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
 class locsys(Group):
     async def is_authorized(self, interaction: Interaction):
         i = interaction.user.id in configurations.owner_ids
         if not i:
-            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.", timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
+            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
         return i
     
     @command(name='update', description='system - update bot repo')
@@ -213,20 +213,20 @@ class locsys(Group):
         system('git fetch --all')
         system('git reset --hard origin/main')
         
-        await interaction.followup.send(embed=Embed(title="Done", color=Color.green(), description='Successfully updated the bot repo on Github.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
+        await interaction.followup.send(embed=Embed(title="Done", color=Color.green(), description='Successfully updated the bot repo on Github.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
 
     @command(name='version', description='system - check the code version')
     async def version(self, interaction: Interaction, ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
         if not await self.is_authorized(interaction): return
-        await interaction.followup.send(ephemeral=ephemeral, embed=Embed(color=Color.green(), title = 'Bot version:', description= f'Bot version {configurations.bot_version} {"[outdated]" if not check_bot_version(configurations.bot_version) else "[up-to-date]"}', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+        await interaction.followup.send(ephemeral=ephemeral, embed=Embed(color=Color.green(), title = 'Bot version:', description= f'Bot version {configurations.bot_version} {"[outdated]" if not check_bot_version(configurations.bot_version) else "[up-to-date]"}').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
     @command(name='restart', description='system - Restart the bot')
     async def restartbot(self, interaction: Interaction, ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
         if not await self.is_authorized(interaction): return
 
-        await interaction.followup.send(embed=Embed(title="Received", description="Restart request received, killing docker container...", color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
+        await interaction.followup.send(embed=Embed(title="Received", description="Restart request received, killing docker container...", color=Color.green()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
         ilog(f'[+] Restart request by {interaction.user.id} ({interaction.user.display_name})', 'command', 'info')
         ilog('Restarting...', 'system', 'critical')
         await client.change_presence(status=Status.dnd, activity=Game('restarting...'))
@@ -241,7 +241,7 @@ class locsys(Group):
         global maintenance_status
         old = maintenance_status
         maintenance_status = status_to_set
-        await interaction.followup.send(embed=Embed(color=Color.green(), title='Success', description=f'Maintenance status changed: {old} -> {maintenance_status}', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+        await interaction.followup.send(embed=Embed(color=Color.green(), title='Success', description=f'Maintenance status changed: {old} -> {maintenance_status}').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
 
 tree.add_command(locsys(), guild=Object(id=configurations.owner_guild_id))
@@ -266,10 +266,10 @@ class net(Group):
     async def is_authorized(self, interaction: Interaction):
         i = (beta_check(user = interaction.user.id, beta_bool = configurations.beta)) or (interaction.user.id in configurations.owner_ids)
         if not i:
-            await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
         k = interaction.guild_id is not None
         if not k:
-            await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.', color=Color.yellow(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.', color=Color.yellow()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
         return i and k
     @command(name='screenshot', description='BETA - Take a screenshot of a website')
     @describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s) (default: 0)', resolution = 'Resolution of the driver window (Default: 720p)', ephemeral = 'If you want to make the response only visible to you. (default: False)')
@@ -280,21 +280,21 @@ class net(Group):
         # conditions to stop executing the command
         if not await self.is_authorized(interaction): return 
         if not url.startswith('http'):
-            await interaction.followup.send(embed=Embed(title='Error', description='Please provide a valid URL, including http or https.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
+            await interaction.followup.send(embed=Embed(title='Error', description='Please provide a valid URL, including http or https.', color=Color.red()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
             return
         if any(url.startswith(i) for i in [x + y for x in ['http://', 'https://'] for y in ['0.0.0.0', '127.0.0.1', 'localhost']]):
-            await interaction.followup.send(embed=Embed(title='Error', description='Please do not try to access localhost.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
+            await interaction.followup.send(embed=Embed(title='Error', description='Please do not try to access localhost.', color=Color.red()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
             return
         if delay > 20:
-            await interaction.followup.send(embed=Embed(title='Error', description='Delay must be less than 20s.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
+            await interaction.followup.send(embed=Embed(title='Error', description='Delay must be less than 20s.', color=Color.red()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
             return
         if global_ratelimit >= configurations.max_global_ratelimit:
-            await interaction.followup.send(embed=Embed(color=Color.red(), title='Rate-limited', description='Bot is currently global rate-limited, please try again later', timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral= True)
+            await interaction.followup.send(embed=Embed(color=Color.red(), title='Rate-limited', description='Bot is currently global rate-limited, please try again later').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral= True)
             return
         await asyncio.sleep(2)
         global_ratelimit += 1 # get_screenshot_undetected_chromedriver
         image_bytes = await get_screenshot(url=url, resolution=resolution, delay=delay)
-        embed = Embed(title='Success',description=f'Here is the website screenshot of {url}', color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
+        embed = Embed(title='Success',description=f'Here is the website screenshot of {url}', color=Color.green()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         embed.set_image(url='attachment://screenshot.png')
         await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
         global_ratelimit += -1
@@ -305,7 +305,7 @@ class net(Group):
         await interaction.response.defer(ephemeral=ephemeral)
         if not await self.is_authorized(interaction): return
         if not (lambda ip: len(x:= ip.split('.')) == 4 and all(part.isdigit() and 0 <= int(part) <= 255 for part in x))(ipv4):
-            await interaction.followup.send(embed=Embed(title='Error', description='Input IPv4 address is invalid.', color=Color.red(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
+            await interaction.followup.send(embed=Embed(title='Error', description='Input IPv4 address is invalid.', color=Color.red()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
             return
         ipdata = await get_ip_info(ipv4)
         embed = Embed(title=f"IP information", description= f"Here's the information for ``{ipv4}``:", color = Color.green())
@@ -348,7 +348,7 @@ async def echo(interaction: Interaction, string: str, ephemeral: bool = True):
 async def uptime(interaction: Interaction):
     global unix_uptime
     await interaction.response.defer(ephemeral=True)
-    await interaction.followup.send(embed=Embed(title="Current bot uptime", description=f"Bot was online <t:{unix_uptime}:R> (<t:{unix_uptime}:T> <t:{unix_uptime}:d>) ", color=Color.green(), timestamp=datetime.now()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
+    await interaction.followup.send(embed=Embed(title="Current bot uptime", description=f"Bot was online <t:{unix_uptime}:R> (<t:{unix_uptime}:T> <t:{unix_uptime}:d>) ", color=Color.green()).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
 
 """
 -------------------------------------------------
