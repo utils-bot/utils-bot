@@ -291,6 +291,7 @@ class net(Group):
         if global_ratelimit >= configurations.max_global_ratelimit:
             await interaction.followup.send(embed=Embed(title='Rate-limited', description='Bot is currently global rate-limited, please try again later').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral= True)
             return
+        await interaction.followup.send(embed=Embed(title = 'Processing', description='Processing your request...'))
         await asyncio.sleep(2)
         global_ratelimit += 1 # get_screenshot_undetected_chromedriver
         image_bytes = await get_screenshot(url=url, resolution=resolution, delay=delay)
