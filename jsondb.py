@@ -24,8 +24,7 @@ async def get_user_whitelist():
 async def update_user_whitelist(user: int, add: bool = True):
     async with aiohttp.ClientSession() as session:
         headers = {'Authorization': DATABASE_SECRET}
-        status = 'add' if add else 'remove'
-        async with session.put(f'{DATABASE_URL}/whitelist/user/modify/{user}?status={status}', headers=headers) as response:
+        async with session.put(f'{DATABASE_URL}/whitelist/user/modify/{user}?status={add}', headers=headers) as response:
             data = await response.json()
             return data['success']
 
