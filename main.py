@@ -47,8 +47,8 @@ class configurations:
     not_builder = bool(environ.get('not_builder', ''))
     screenshotapi = environ.get('SCREENSHOT_API_URL', 'https://example.com/replace/with/your/own/endpoint')
     screenshotsecret = environ.get("SCREENSHOT_API_SECRET", 'blablablathisisaAPIkey')
-    is_replit = bool(environ.get("IS_REPLIT", False))
-    no_git_automation = bool(environ.get("NO_GIT_AUTOMATION",False))
+    is_replit = environ.get("IS_REPLIT", "NO") == "YES"
+    no_git_automation = environ.get("NO_GIT_AUTOMATION", "NO") == "YES"
     # ipinfo_api_key: str = environ.get('ipinfo_api_key', '')
     # chromedriver_path = environ.get('chromedriver_path', '/nix/store/i85kwq4r351qb5m7mrkl2grv34689l6b-chromedriver-108.0.5359.71/bin/chromedriver')
 
