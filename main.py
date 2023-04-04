@@ -395,8 +395,9 @@ BOOT
 """
 def run():
     # some checks before run, soonTM
-    ilog('Starting flask keep-alive server...', 'init', 'info')
-    ka()
+    if configurations.is_replit:
+        ilog('Starting flask keep-alive server...', 'init', 'info')
+        ka()
     ilog('Starting Discord client...', 'init', 'info')
     client.run(configurations.bot_token)
 build = not configurations.not_builder
