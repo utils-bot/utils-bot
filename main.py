@@ -194,7 +194,7 @@ class sys(Group):
         if not await self.is_authorized(interaction): return
         
         try:
-            update_status = update_whitelist(id = user.id, add = mode == 'add')
+            update_status = update_whitelist(user = user.id, add = mode == 'add')
             await interaction.followup.send(embed=Embed(title='Done', description=f'Successfully {"added" if mode == "add" else "removed"} this user in the list: {user.mention} ({user.id})').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar) if update_status else Embed(title='Failed', description='A error occured').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
         except Exception as e:
             ilog('Exception in command /whitelist_modify:' + e, logtype= 'error', flag = 'command')
