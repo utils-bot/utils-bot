@@ -4,7 +4,7 @@ if [ "$NO_GIT_AUTOMATION" = "YES" ]; then
     git reset --hard origin/main
 fi
 
-if [ "$NO_PIP_INSTALLED" -= "YES" ]; then
+if [ "$NO_PIP_INSTALLED" = "YES" ]; then
     echo ========================================== Installing dependencies ==========================================
     apt-get update && apt-get install -y python3-pip
 fi
@@ -15,6 +15,3 @@ fi
 
 echo ========================================== Starting ==========================================
 python main.py
-
-
-
