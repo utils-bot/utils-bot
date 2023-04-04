@@ -1,22 +1,17 @@
 """---------------------------------------------
-Env:
-- Bot token -> .env:bot_token
-- Owner guild id -> .env:owner_guild_id
-- Random quotes -> .env:not_builder
-- URL of Screenshot API server -> .env:SCREENSHOT_API_URL
-- API Key for Screenshot API server -> .env:SCREENSHOT_API_SECRET
+Check .env.example to setup the bot.
 ---------------------------------------------"""
-from discord import Intents, Client, Interaction, Object, Embed, File, Game, Status, Color, Member
+from discord import Intents, Client, Interaction, Object, Embed, File, Game, Status, Member
 from discord.app_commands import CommandTree, Group, command, Choice, choices, describe
-from jsondb import get_whitelist, update_whitelist, beta_check, check_bot_version
+from jsondb import check_bot_version, get_user_whitelist, update_user_whitelist, check_user_whitelist
 import logging, json, typing, functools, traceback, asyncio, json
 from aiohttp import ClientSession
 from logger import CustomFormatter, ilog
-from os import environ, system
-from datetime import datetime
+from os import system
 from time import time
 from keep_alive import ka
 from io import BytesIO
+from configs import configurations
 # from enum import Enum
 
 discord_logger = logging.getLogger('discord')
@@ -36,19 +31,7 @@ NỎTES
 DEFINING VARS
 -------------------------------------------------
 """
-class configurations:
-    bot_version = 'v0.3.6'
-    bot_token = environ.get('bot_token') 
-    owner_ids = [806432782111735818]
-    owner_guild_id = 1070724751284256939
-    beta = True
-    max_global_ratelimit = 2
-    default_maintenance_status = False  # ignore
-    not_builder = bool(environ.get('not_builder', ''))
-    screenshotapi = environ.get('SCREENSHOT_API_URL', 'https://example.com/replace/with/your/own/endpoint')
-    screenshotsecret = environ.get("SCREENSHOT_API_SECRET", 'blablablathisisaAPIkey')
-    is_replit = environ.get("IS_REPLIT", "NO") == "YES"
-    no_git_automation = environ.get("NO_GIT_AUTOMATION", "NO") == "YES"
+
     # ipinfo_api_key: str = environ.get('ipinfo_api_key', '')
     # chromedriver_path = environ.get('chromedriver_path', '/nix/store/i85kwq4r351qb5m7mrkl2grv34689l6b-chromedriver-108.0.5359.71/bin/chromedriver')
 
@@ -97,6 +80,9 @@ APPLICATION ERROR HANDLER
 -------------------------------------------------"""
 @tree.error
 async def on_error(interaction: Interaction, error):
+    if interaction.user.id not in configurations.owner_ids:
+        await interaction.followup.send(embed=Embed(title="Exception occurred:", description= 'Ask the developer of the bot for more information.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+        return
     full_err = traceback.format_exc()
     cleaned = clean_traceback(full_err)
     minlog = cleaned[:cleaned.rfind('\n')]
@@ -181,7 +167,7 @@ class sys(Group):
 
         embed = Embed(title='Whitelist list', description='Here is the list of beta-whitelisted user IDs:').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         current_list = ""
-        for i in get_whitelist():
+        for i in await get_user_whitelist():
             current_list += f'<@{i}> ({i})\n'
         embed.add_field(name='Users:', value = current_list)
         await interaction.followup.send(embed=embed, ephemeral=ephemeral)
@@ -194,7 +180,7 @@ class sys(Group):
         if not await self.is_authorized(interaction): return
         
         try:
-            update_status = update_whitelist(user = user.id, add = mode == 'add')
+            update_status = await update_user_whitelist(user = user.id, add = mode == 'add')
             await interaction.followup.send(embed=Embed(title='Done', description=f'Successfully {"added" if mode == "add" else "removed"} this user in the list: {user.mention} ({user.id})').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar) if update_status else Embed(title='Failed', description='A error occured').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
         except Exception as e:
             ilog('Exception in command /whitelist_modify:' + e, logtype= 'error', flag = 'command')
@@ -272,7 +258,7 @@ class net(Group):
         if maintenance_status:
             await interaction.followup.send(embed = Embed(title='Maintaining', description='Maintenance status is set to True.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
             return False
-        i = (beta_check(user = interaction.user.id, beta_bool = configurations.beta)) or (interaction.user.id in configurations.owner_ids)
+        i = (await check_user_whitelist(user = interaction.user.id)) or (interaction.user.id in configurations.owner_ids)
         k = interaction.guild_id is not None
         p = interaction.guild_id in [guild.id for guild in client.guilds]
         if not i:
