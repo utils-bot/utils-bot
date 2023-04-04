@@ -9,9 +9,5 @@ if [ "$NO_PIP_INSTALLED" = "YES" ]; then
     apt-get update && apt-get install -y python3-pip
 fi
 
-if [ "$IS_REPLIT" != "YES" ]; then
-    python -m pip install -r requirements.txt
-fi
-
 echo ========================================== Starting ==========================================
 python main.py
