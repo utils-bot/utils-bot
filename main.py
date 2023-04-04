@@ -47,6 +47,8 @@ class configurations:
     not_builder = bool(environ.get('not_builder', ''))
     screenshotapi = environ.get('SCREENSHOT_API_URL', 'https://example.com/replace/with/your/own/endpoint')
     screenshotsecret = environ.get("SCREENSHOT_API_SECRET", 'blablablathisisaAPIkey')
+    is_replit = bool(environ.get("IS_REPLIT", False))
+    no_git_automation = bool(environ.get("NO_GIT_AUTOMATION",False))
     # ipinfo_api_key: str = environ.get('ipinfo_api_key', '')
     # chromedriver_path = environ.get('chromedriver_path', '/nix/store/i85kwq4r351qb5m7mrkl2grv34689l6b-chromedriver-108.0.5359.71/bin/chromedriver')
 
@@ -115,6 +117,7 @@ BASE COMMANDS
 |-- whitelist
     |-- list
     |-- modify
+
 /locsys
 |-- update
 |-- version
@@ -207,6 +210,7 @@ class locsys(Group):
     @command(name='update', description='system - update bot repo')
     async def update_bot(self, interaction: Interaction, ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
+        if (not configurations.is_replit) or (not configurations.no_git_automation): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on a system that can auto-update itself.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral); return
         if not await self.is_authorized(interaction): return
         
         ilog("Updating git repo...", 'git', 'warning')
@@ -217,6 +221,7 @@ class locsys(Group):
 
     @command(name='version', description='system - check the code version')
     async def version(self, interaction: Interaction, ephemeral: bool = False):
+        if (not configurations.is_replit) or (not configurations.no_git_automation): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on a system that can auto-update itself.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral); return
         await interaction.response.defer(ephemeral=ephemeral)
         if not await self.is_authorized(interaction): return
         await interaction.followup.send(ephemeral=ephemeral, embed=Embed(title = 'Bot version:', description= f'Bot version {configurations.bot_version} {"[outdated]" if not check_bot_version(configurations.bot_version) else "[up-to-date]"}').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
@@ -225,7 +230,7 @@ class locsys(Group):
     async def restartbot(self, interaction: Interaction, ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
         if not await self.is_authorized(interaction): return
-
+        if (not configurations.is_replit): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on non-docker system.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral); return
         await interaction.followup.send(embed=Embed(title="Received", description="Restart request received, killing docker container...", ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
         ilog(f'[+] Restart request by {interaction.user.id} ({interaction.user.display_name})', 'command', 'info')
         ilog('Restarting...', 'system', 'critical')
@@ -264,6 +269,9 @@ async def get_ip_info(ip) -> dict:
 
 class net(Group):
     async def is_authorized(self, interaction: Interaction):
+        if maintenance_status:
+            await interaction.followup.send(embed = Embed(title='Maintaining', description='Maintenance status is set to True.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            return False
         i = (beta_check(user = interaction.user.id, beta_bool = configurations.beta)) or (interaction.user.id in configurations.owner_ids)
         if not i:
             await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
@@ -337,13 +345,14 @@ FEATURE COMMANDS (official)
 /echo
 /uptime
 """
-@tree.command(name='echo', description='removing soon - Echo the provided string to the user')
-@describe(string='String to echo')
-async def echo(interaction: Interaction, string: str, ephemeral: bool = True):
-    if interaction.user.id not in configurations.owner_ids:
-        ephemeral = True
-    await interaction.response.defer(ephemeral=ephemeral)
-    await interaction.followup.send(string, ephemeral=ephemeral)
+
+# @tree.command(name='echo', description='removing soon - Echo the provided string to the user')
+# @describe(string='String to echo')
+# async def echo(interaction: Interaction, string: str, ephemeral: bool = True):
+#     if interaction.user.id not in configurations.owner_ids:
+#         ephemeral = True
+#     await interaction.response.defer(ephemeral=ephemeral)
+#     await interaction.followup.send(string, ephemeral=ephemeral)
 
 @tree.command(name='uptime', description='Returns the bot uptime.')
 async def uptime(interaction: Interaction):
