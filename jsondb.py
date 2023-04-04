@@ -2,7 +2,7 @@ import json
 from os import path
 from logger import ilog
 
-WHITELIST_PATH = './database/whitelist.json'
+WHITELIST_PATH = 'whitelist.json'
 VERSION_PATH = 'version.json'
 
 def get_whitelist() -> list:
