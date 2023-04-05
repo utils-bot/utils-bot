@@ -311,15 +311,15 @@ class net(Group):
         # embed.add_field(name, ipdata[val])
         if ipdata['status'] == "success":
             fieldlist = [
-                ("IP", ipdata.get("ip", "null")),
-                ("Data Center", ipdata.get("data_center", "null")),
-                ("Country", f'{ipdata["geo"].get("country", "null")} | {ipdata["geo"].get("country_code", "null")} {ipdata["geo"].get("country_flag_emoji", "")}'),
-                ("City", ipdata["geo"].get("city", "null")),
-                ("Region", f'{ipdata["geo"].get("region", "null")} | {ipdata["geo"].get("region_code", "null")}'),
+                ("IP", ipdata.get("ip", "__")),
+                ("Data Center", ipdata.get("data_center", "__")),
+                ("Country", f'{ipdata["geo"].get("country", "__")} | {ipdata["geo"].get("country_code", "__")} {ipdata["geo"].get("country_flag_emoji", "?")}'),
+                ("City", ipdata["geo"].get("city", "__")),
+                ("Region", f'{ipdata["geo"].get("region", "__")} | {ipdata["geo"].get("region_code", "__")}'),
                 ("\u200B", ""),  # blank field separator
-                ("Network Route", ipdata["network"].get("route", "null")),
-                ("AS Number", ipdata["network"].get("as_number", "null")),
-                ("AS Organization", f'{ipdata["network"].get("as_org", "null")} | {ipdata["network"].get("as_org_alt", "")}')
+                ("Network Route", ipdata["network"].get("route", "__")),
+                ("AS Number", ipdata["network"].get("as_number", "__")),
+                ("AS Organization", f'{ipdata["network"].get("as_org", "__")} | {ipdata["network"].get("as_org_alt", "?")}')
             ]
             for field_name, field_value in fieldlist:
                 try:
