@@ -61,9 +61,6 @@ def build_mode():
     with open('version.json', 'w+') as f:
         json.dump({'current_version': configurations.bot_version}, f)
         ilog(f'Finished updating version to {configurations.bot_version}', 'build', 'info')
-    with open('pc.py', 'wb+') as fw, open('main.py', 'rb') as fr:
-        fw.write(fr.read())
-        ilog(f'Finished making pc.py file that you can input your own shit', 'build', 'info')
 
 def clean_traceback(traceback_str: str) -> str:
     result = ''
