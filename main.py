@@ -320,7 +320,7 @@ class net(Group):
             ]
             for field_name, field_value in fieldlist:
                 try:
-                    embed.add_field(name=field_name, value=f'`{field_value}`', inline=field_name=="\u200B")
+                    embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=field_name=="\u200B")
                 except:
                     pass
 
