@@ -45,9 +45,6 @@ async def antiblock(blocking_func: typing.Callable, *args, **kwargs) -> typing.A
     func = functools.partial(blocking_func, *args, **kwargs)
     return await client.loop.run_in_executor(None, func)
 
-async def asynceval(code: str):
-    return await eval(code)
-
 async def get_screenshot(url, resolution, delay=7, api_url=configurations.screenshotapi, token=configurations.screenshotsecret):
     params = {'url': url, 'resolution': resolution, 'delay': delay} #, 'authorization': token}
     headers = {'authorization': token}
@@ -369,7 +366,7 @@ async def on_ready():
     unix_uptime = round(time())
     global_ratelimit = 0
     maintenance_status = configurations.default_maintenance_status
-    await client.change_presence(activity=Game('starting...'), status=Status.dnd)
+    await client.change_presence(activity=Game('starting...'), status=Status.idle)
     await asyncio.sleep(2)
     ilog("Syncing commands to the owner guild...", 'init', 'info')
     await tree.sync(guild=Object(id=configurations.owner_guild_id))
