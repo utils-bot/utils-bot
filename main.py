@@ -310,18 +310,23 @@ class net(Group):
         embed = Embed(title=f"IP information", description= f"Here's the information for ``{ipv4}``:")
         # embed.add_field(name, ipdata[val])
         if ipdata['status'] == "success":
-            embed.add_field(name="IP", value=f'`{ipdata["ip"]}`', inline=True)
-            embed.add_field(name="Data Center", value=f'`{ipdata["data_center"]}`', inline=True)
-            embed.add_field(name="\u200B", value="", inline=False)
-            try:
-                embed.add_field(name="Country", value=f'`{ipdata["geo"]["country"]} | {ipdata["geo"]["country_code"]} {ipdata["geo"]["country_flag_emoji"]}`', inline=True)
-                embed.add_field(name="City", value=f'`{ipdata["geo"]["city"]}`', inline=True)
-                embed.add_field(name="Region", value=f'`{ipdata["geo"]["region"]} | {ipdata["geo"]["region_code"]}`', inline=True)
-                embed.add_field(name="\u200B", value="", inline=False)
-            except: pass # optional data
-            embed.add_field(name="Network Route", value=f'`{ipdata["network"]["route"]}`', inline=True)
-            embed.add_field(name="AS Number", value=f'`{ipdata["network"]["as_number"]}`', inline=True)
-            embed.add_field(name="AS Organization", value=f'`{ipdata["network"]["as_org"]} | {ipdata["network"]["as_org_alt"]}`', inline=True)
+            fieldlist = [
+                ("IP", ipdata["ip"]),
+                ("Data Center", ipdata["data_center"]),
+                ("Country", f'{ipdata["geo"]["country"]} | {ipdata["geo"]["country_code"]} {ipdata["geo"]["country_flag_emoji"]}'),
+                ("City", ipdata["geo"]["city"]),
+                ("Region", f'{ipdata["geo"]["region"]} | {ipdata["geo"]["region_code"]}'),
+                ("\u200B", ""),
+                ("Network Route", ipdata["network"]["route"]),
+                ("AS Number", ipdata["network"]["as_number"]),
+                ("AS Organization", f'{ipdata["network"]["as_org"]} | {ipdata["network"]["as_org_alt"]}')
+            ]
+            for field_name, field_value in fieldlist:
+                try:
+                    embed.add_field(name=field_name, value=f'`{field_value}`', inline=field_value == "")
+                except:
+                    pass
+
         else:
             embed.add_field(name="Status", value = f"``{ipdata['status']}``")
         embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
