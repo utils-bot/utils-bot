@@ -6,3 +6,4 @@ pc.py
 privnote.txt
 .env
 .vscode/
+.idea/
