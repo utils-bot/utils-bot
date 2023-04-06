@@ -308,21 +308,20 @@ class net(Group):
         # embed.add_field(name, ipdata[val])
         if ipdata['status'] == "success":
             fieldlist = [
-                ("IP", ipdata.get("ip", "__")),
-                ("Data Center", ipdata.get("data_center", "__")),
-                ("Country", f'{ipdata["geo"].get("country", "__")} | {ipdata["geo"].get("country_code", "__")} {ipdata["geo"].get("country_flag_emoji", "?")}'),
-                ("City", ipdata["geo"].get("city", "__")),
-                ("Region", f'{ipdata["geo"].get("region", "__")} | {ipdata["geo"].get("region_code", "__")}'),
-                ("\u200B", ""),  # blank field separator
-                ("Network Route", ipdata["network"].get("route", "__")),
-                ("AS Number", ipdata["network"].get("as_number", "__")),
-                ("AS Organization", f'{ipdata["network"].get("as_org", "__")} | {ipdata["network"].get("as_org_alt", "?")}')
+                ("IP", ipdata.get("ip", None)),
+                ("Data Center", ipdata.get("data_center", None)),
+                ("Continent", f'{ipdata["geo"].get("continent", "_")} | {ipdata["geo"].get("continent_code", "_")}')
+                ("Country", f'{ipdata["geo"].get("country", "_")} | {ipdata["geo"].get("country_code", "_")} {ipdata["geo"].get("country_flag_emoji", "?")}'),
+                ("City", ipdata["geo"].get("city", None)),
+                ("Region", f'{ipdata["geo"].get("region", "_")} | {ipdata["geo"].get("region_code", "_")}'),
+                ("\u200B", "\n"),  # blank field separator
+                ("Network Route", ipdata["network"].get("route", None)),
+                ("AS Number", ipdata["network"].get("as_number", None)),
+                ("AS Organization", f'{ipdata["network"].get("as_org", "_")} | {ipdata["network"].get("as_org_alt", "?")}')
             ]
             for field_name, field_value in fieldlist:
-                try:
-                    embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=field_name=="\u200B")
-                except:
-                    pass
+                if field_value == None: continue
+                embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=False)
 
         else:
             embed.add_field(name="Status", value = f"``{ipdata['status']}``")
