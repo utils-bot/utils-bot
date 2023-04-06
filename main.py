@@ -310,7 +310,7 @@ class net(Group):
             fieldlist = [
                 ("IP", ipdata.get("ip", None)),
                 ("Data Center", ipdata.get("data_center", None)),
-                ("Continent", f'{ipdata["geo"].get("continent", "_")} | {ipdata["geo"].get("continent_code", "_")}')
+                ("Continent", f'{ipdata["geo"].get("continent", "_")} | {ipdata["geo"].get("continent_code", "_")}'),
                 ("Country", f'{ipdata["geo"].get("country", "_")} | {ipdata["geo"].get("country_code", "_")} {ipdata["geo"].get("country_flag_emoji", "?")}'),
                 ("City", ipdata["geo"].get("city", None)),
                 ("Region", f'{ipdata["geo"].get("region", "_")} | {ipdata["geo"].get("region_code", "_")}'),
