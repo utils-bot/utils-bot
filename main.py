@@ -46,13 +46,17 @@ async def antiblock(blocking_func: typing.Callable, *args, **kwargs) -> typing.A
     return await client.loop.run_in_executor(None, func)
 
 async def get_screenshot(url, resolution, delay=7, api_url=configurations.screenshotapi, token=configurations.screenshotsecret):
+    success = True
     params = {'url': url, 'resolution': resolution, 'delay': delay} #, 'authorization': token}
     headers = {'authorization': token}
     async with ClientSession() as session:
         async with session.get(api_url, params=params, headers=headers) as response:
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except:
+                success = False
             image_data = await response.read()
-    return image_data
+    return {"success": success, "image_data": image_data}
 
 async def get_redirect_history_aiohttp(url: str):
     return
@@ -84,7 +88,7 @@ async def on_error(interaction: Interaction, error):
     cleaned = clean_traceback(full_err)
     minlog = cleaned[:cleaned.rfind('\n')]
     minlog_under800 = minlog[-800:] 
-    es = ('Check the console for more information.' if len(minlog) > 1000 else '') + f"```py\n{('...' if minlog_under800 != minlog else '') + minlog_under800}```" + f"```py\n{cleaned.splitlines()[-1]}```"
+    es = ('Check the console for more information.' if len(minlog) > 1000 else '') + f"`py\n{('...' if minlog_under800 != minlog else '') + minlog_under800}`" + f"`py\n{cleaned.splitlines()[-1]}`"
     # if (i:=interaction.user.id) in configurations.owner_guild_id or i in get_whitelist():
     ilog('Exception in a application command: ' + full_err + '--------------------end of exception--------------------', logtype= 'error', flag = 'command')
     await interaction.followup.send(embed=Embed(title="Exception occurred:", description= es, ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
@@ -141,7 +145,7 @@ class sys(Group):
         if not result:
             await interaction.followup.send(embed=Embed(title="Script executed", description='Script executed successfully, the result, might be `None` or too long to fill in here.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
         else:
-            await interaction.followup.send(embed=Embed(title="Result", description= "```py\n" + str(result) + "```", ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await interaction.followup.send(embed=Embed(title="Result", description= "`py\n" + str(result) + "`", ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
     @command(name = 'guilds', description= 'system - list guilds that the bot are currently in.')
     async def guilds(self, interaction: Interaction, ephemeral: bool = True):
         await interaction.response.defer(ephemeral=ephemeral)
@@ -153,7 +157,7 @@ class sys(Group):
                 current_list += f'{i.id}: {i.name}\n'
         else:
             current_list = "<too many guilds>"
-        embed.add_field(name = 'Guilds:', value = f"```{current_list}```")
+        embed.add_field(name = 'Guilds:', value = f"`{current_list}`")
         await interaction.followup.send(embed=embed, ephemeral=ephemeral)
     
     whitelist = Group(name='whitelist', description='Get and modify the beta whitelist in the database')
@@ -291,11 +295,16 @@ class net(Group):
         await interaction.followup.send(embed=Embed(title = 'Processing', description='Processing your request...'))
         await asyncio.sleep(2)
         global_ratelimit += 1 # get_screenshot_undetected_chromedriver
-        image_bytes = await get_screenshot(url=url, resolution=resolution, delay=delay)
-        embed = Embed(title='Success',description=f'Here is the website screenshot of {url}', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
-        embed.set_image(url='attachment://screenshot.png')
-        await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
-        global_ratelimit += -1
+        data = await get_screenshot(url=url, resolution=resolution, delay=delay)
+        if data["success"]:
+            global_ratelimit += -1
+            image_bytes = data["image_data"]
+            embed = Embed(title='Success',description=f'Here is the website screenshot of {url}', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
+            embed.set_image(url='attachment://screenshot.png')
+            await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
+        else:
+            await interaction.followup.send(embed=Embed(title='Error', description='Failed to get the screenshot from the API, ask developers for more details... [API error?]'))
+            
     @command(name = 'ip', description='Use APIs to fetch information about a IPv4 address.')
     @describe(ipv4 = "The IPv4 address you want to fetch.")
     # @choices(ipv4 = [Choice(value = i) for i in [f"{x}.{y}.{z}.{t}" for x in range(0, 255) for y in range(0, 255) for z in range(0, 255) for t in range(0, 255)]])
@@ -306,7 +315,7 @@ class net(Group):
             await interaction.followup.send(embed=Embed(title='Error', description='Input IPv4 address is invalid.', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
             return
         ipdata = await get_ip_info(ipv4)
-        embed = Embed(title=f"IP information", description= f"Here's the information for ``{ipv4}``:")
+        embed = Embed(title=f"IP information", description= f"Here's the information for `{ipv4}`:")
         # embed.add_field(name, ipdata[val])
         if ipdata['status'] == "success":
             fieldlist = [
@@ -326,7 +335,7 @@ class net(Group):
                 embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=False)
 
         else:
-            embed.add_field(name="Status", value = f"``{ipdata['status']}``")
+            embed.add_field(name="Status", value = f"`{ipdata['status']}`")
         embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         await interaction.followup.send(embed = embed, ephemeral=ephemeral)
 
