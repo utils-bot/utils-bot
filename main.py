@@ -47,8 +47,8 @@ async def antiblock(blocking_func: typing.Callable, *args, **kwargs) -> typing.A
 
 async def get_screenshot(url, resolution, delay=7, api_url=configurations.screenshotapi, token=configurations.screenshotsecret):
     success = True
-    params = {'url': url, 'resolution': resolution, 'delay': delay} #, 'authorization': token}
-    headers = {'authorization': token}
+    params = {'resolution': resolution, 'delay': delay} #, 'authorization': token}
+    headers = {'url': url, 'authorization': token}
     async with ClientSession() as session:
         async with session.get(api_url, params=params, headers=headers) as response:
             try:
