@@ -53,9 +53,10 @@ async def get_screenshot(url, resolution, delay=7, api_url=configurations.screen
         async with session.get(api_url, params=params, headers=headers) as response:
             try:
                 response.raise_for_status()
+                image_data = await response.read()
             except:
                 success = False
-            image_data = await response.read()
+                image_data = None
     return {"success": success, "image_data": image_data}
 
 async def get_redirect_history_aiohttp(url: str):
