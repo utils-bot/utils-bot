@@ -2,7 +2,7 @@
 Check .env.example to setup the bot.
 ---------------------------------------------"""
 from discord import Intents, Client, Interaction, Object, Embed, File, Game, Status, Member, Webhook
-from discord.app_commands import CommandTree, Group, command, Choice, choices, describe
+from discord.app_commands import CommandTree, Group, command, Choice, choices, describe, Range
 from jsondb import check_bot_version, get_user_whitelist, update_user_whitelist, check_user_whitelist
 import logging, json, typing, functools, traceback, asyncio, json
 from aiohttp import ClientSession
@@ -292,7 +292,7 @@ class net(Group):
     @command(name='screenshot', description='BETA - Take a screenshot of a website')
     @describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s) (default: 0)', resolution = 'Resolution of the driver window (Default: 720p)', ephemeral = 'If you want to make the response only visible to you. (default: False)')
     @choices(resolution = [Choice(value=i, name=k) for i, k in [(240, '240p - Minimum'), (360, '360p - Website'), (480, '480p - Standard'), (720, '720p - HD'), (1080, '1080p - Full HD'), (1440, '1440p - 2K'), (2160, '2160p - 4K')]]) # , ('undetected_selenium', 'Selenium + Undetected Chromium (for bypassing)') # engine = [Choice(value=i, name=k) for i, k in [('selenium', 'Selenium + Chromium'), ('playwright', 'Playwright + Chromium')]]
-    async def screenshot(self, interaction: Interaction, url: str, delay: int = 0, resolution: int = 720, ephemeral: bool = False):
+    async def screenshot(self, interaction: Interaction, url: str, delay: Range(1, 20), resolution: int = 720, ephemeral: bool = False):
         global global_ratelimit
         await interaction.response.defer(ephemeral = ephemeral)
         # conditions to stop executing the command
@@ -302,9 +302,6 @@ class net(Group):
             return
         if any(url.startswith(i) for i in [x + y for x in ['http://', 'https://'] for y in ['0.0.0.0', '127.0.0.1', 'localhost']]):
             await interaction.followup.send(embed=Embed(title='Error', description='Please do not try to access localhost.', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
-            return
-        if delay > 20:
-            await interaction.followup.send(embed=Embed(title='Error', description='Delay must be less than 20s.', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
             return
         if global_ratelimit >= configurations.max_global_ratelimit:
             await interaction.followup.send(embed=Embed(title='Rate-limited', description='Bot is currently global rate-limited, please try again later').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral= True)
