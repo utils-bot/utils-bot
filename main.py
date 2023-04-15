@@ -52,17 +52,15 @@ async def get_screenshot(url, resolution, delay, debugmsg: Webhook, api_url=conf
     headers = {'url': url, 'authorization': token}
     debugem = Embed(title="Processing your request...")
     debugem.description = "[...] Validating data\n[] Connect to the API\n[] Fetch image\n[] Return image"
-    debugmsg.edit(embed = debugem)
-    asyncio.sleep(0.1)
+    await debugmsg.edit(embed = debugem)
     debugem.description = "[OK] Validate data\n[...] Connecting to the API\n[] Fetch image\n[] Return image"
-    debugmsg.edit(embed = debugem)
-    asyncio.sleep(0.1)
+    await debugmsg.edit(embed = debugem)
     async with ClientSession() as session:
         async with session.get(api_url, params=params, headers=headers) as response:
             try:
                 response.raise_for_status()
                 debugem.description = "[OK] Validate data\n[OK] Connect to the API\n[...] Fetching image\n[] Return image"
-                debugmsg.edit(embed = debugem)
+                await debugmsg.edit(embed = debugem)
                 image_data = await response.read()
                 api_elapsed = response.headers.get("X-Elapsed-Time")
             except Exception as e:
@@ -71,7 +69,7 @@ async def get_screenshot(url, resolution, delay, debugmsg: Webhook, api_url=conf
                 api_elapsed = 0
                 error = e
     debugem.description = "[OK] Validate data\n[OK] Connect to the API\n[OK] Fetch image\n[...] Returning image"
-    debugmsg.edit(embed = debugem)
+    await debugmsg.edit(embed = debugem)
     return {"success": success, "image_data": image_data, "error": error, "api_elapsed": api_elapsed}
 
 async def get_redirect_history_aiohttp(url: str):
