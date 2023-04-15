@@ -323,7 +323,7 @@ class net(Group):
             embed.set_image(url='attachment://screenshot.png')
             await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
         else:
-            await interaction.followup.send(embed=Embed(title='Error', description='Failed to get the screenshot from the API, ask developers for more details... [API error?]'))
+            await interaction.followup.send(embed=Embed(title='Error', description=f'Failed to get the screenshot from the API, ask developers for more details... [API error?] ```{data["error"]}```'))
             
     @command(name = 'ip', description='Use APIs to fetch information about a IPv4 address.')
     @describe(ipv4 = "The IPv4 address you want to fetch.")
