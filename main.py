@@ -1,7 +1,7 @@
 """---------------------------------------------
 Check .env.example to setup the bot.
 ---------------------------------------------"""
-from discord import Intents, Client, Interaction, Object, Embed, File, Game, Status, Member
+from discord import Intents, Client, Interaction, Object, Embed, File, Game, Status, Member, Webhook
 from discord.app_commands import CommandTree, Group, command, Choice, choices, describe
 from jsondb import check_bot_version, get_user_whitelist, update_user_whitelist, check_user_whitelist
 import logging, json, typing, functools, traceback, asyncio, json
@@ -45,19 +45,34 @@ async def antiblock(blocking_func: typing.Callable, *args, **kwargs) -> typing.A
     func = functools.partial(blocking_func, *args, **kwargs)
     return await client.loop.run_in_executor(None, func)
 
-async def get_screenshot(url, resolution, delay=7, api_url=configurations.screenshotapi, token=configurations.screenshotsecret):
+async def get_screenshot(url, resolution, delay, debugmsg: Webhook, api_url=configurations.screenshotapi, token=configurations.screenshotsecret):
     success = True
+    error: str = ""
     params = {'resolution': resolution, 'delay': delay} #, 'authorization': token}
     headers = {'url': url, 'authorization': token}
+    debugem = Embed(title="Processing your request...")
+    debugem.description = "[...] Validating data\n[] Connect to the API\n[] Fetch image\n[] Return image"
+    debugmsg.edit(embed = debugem)
+    asyncio.sleep(0.1)
+    debugem.description = "[OK] Validate data\n[...] Connecting to the API\n[] Fetch image\n[] Return image"
+    debugmsg.edit(embed = debugem)
+    asyncio.sleep(0.1)
     async with ClientSession() as session:
         async with session.get(api_url, params=params, headers=headers) as response:
             try:
                 response.raise_for_status()
+                debugem.description = "[OK] Validate data\n[OK] Connect to the API\n[...] Fetching image\n[] Return image"
+                debugmsg.edit(embed = debugem)
                 image_data = await response.read()
-            except:
+                api_elapsed = response.headers.get("X-Elapsed-Time")
+            except Exception as e:
                 success = False
                 image_data = None
-    return {"success": success, "image_data": image_data}
+                api_elapsed = 0
+                error = e
+    debugem.description = "[OK] Validate data\n[OK] Connect to the API\n[OK] Fetch image\n[...] Returning image"
+    debugmsg.edit(embed = debugem)
+    return {"success": success, "image_data": image_data, "error": error, "api_elapsed": api_elapsed}
 
 async def get_redirect_history_aiohttp(url: str):
     return
@@ -260,16 +275,19 @@ class net(Group):
         if maintenance_status:
             await interaction.followup.send(embed = Embed(title='Maintaining', description='Maintenance status is set to True.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
             return False
-        i = (await check_user_whitelist(user = interaction.user.id)) or (interaction.user.id in configurations.owner_ids)
+        i = (await check_user_whitelist(user = interaction.user.id))
+        l = (interaction.user.id in configurations.owner_ids)
         k = interaction.guild_id is not None
         p = interaction.guild_id in [guild.id for guild in client.guilds]
-        if not k:
+        if l:
+            return True
+        elif not k:
             await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
             return False
         elif not p:
             await interaction.followup.send(embed=Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
             return False
-        elif not i:
+        elif not (i and l):
             await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
             return False
         return True
@@ -293,14 +311,17 @@ class net(Group):
         if global_ratelimit >= configurations.max_global_ratelimit:
             await interaction.followup.send(embed=Embed(title='Rate-limited', description='Bot is currently global rate-limited, please try again later').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral= True)
             return
-        await interaction.followup.send(embed=Embed(title = 'Processing', description='Processing your request...'))
-        await asyncio.sleep(2)
+        msg = await interaction.followup.send(embed=Embed(title = 'Processing your request...'))
+        await asyncio.sleep(1)
         global_ratelimit += 1 # get_screenshot_undetected_chromedriver
-        data = await get_screenshot(url=url, resolution=resolution, delay=delay)
+        els = time()
+        data = await get_screenshot(url=url, resolution=resolution, delay=delay, debugmsg=msg)
+        global_elapsed = round(1000*(time() - els))
+        await msg.edit(embed=Embed(title="Finished", description="Your request has been processed.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
         if data["success"]:
             global_ratelimit += -1
             image_bytes = data["image_data"]
-            embed = Embed(title='Success',description=f'Here is the website screenshot of {url}', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
+            embed = Embed(title='Success',description=f'Here is the website screenshot of {url} (took {global_elapsed}ms globally, {data["api_elapsed"]}ms for the API to work, elapsed times including requested delays)', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
             embed.set_image(url='attachment://screenshot.png')
             await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
         else:
