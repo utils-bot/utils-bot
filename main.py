@@ -319,7 +319,7 @@ class net(Group):
         if data["success"]:
             global_ratelimit += -1
             image_bytes = data["image_data"]
-            embed = Embed(title='Success',description=f'Here is the website screenshot of {url} (took {global_elapsed}ms globally, {data["api_elapsed"]}ms for the API to work, elapsed times including requested delays)', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
+            embed = Embed(title='Success',description=f'Here is the website screenshot of {url} \n||*(took {global_elapsed}ms globally, {data["api_elapsed"]}ms for the API to work, elapsed times including requested delays)*||', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
             embed.set_image(url='attachment://screenshot.png')
             await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
         else:
