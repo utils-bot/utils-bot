@@ -134,7 +134,9 @@ async def sync(interaction: Interaction, ephemeral: bool = False):
         return
     await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
     tree.copy_global_to(guild = Object(id = configurations.owner_guild_id))
+    asyncio.sleep(3)
     await tree.sync()
+    asyncio.sleep(3)
     ilog(f'Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}', logtype = 'info', flag = 'tree')
     await interaction.followup.send(embed=Embed(title="Command tree synced", description='Successfully synced the global command tree to all guilds').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
     await client.change_presence(activity=Game('synced. reloading...'), status=Status.dnd)
@@ -292,7 +294,7 @@ class net(Group):
     @command(name='screenshot', description='BETA - Take a screenshot of a website')
     @describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s) (default: 0)', resolution = 'Resolution of the driver window (Default: 720p)', ephemeral = 'If you want to make the response only visible to you. (default: False)')
     @choices(resolution = [Choice(value=i, name=k) for i, k in [(240, '240p - Minimum'), (360, '360p - Website'), (480, '480p - Standard'), (720, '720p - HD'), (1080, '1080p - Full HD'), (1440, '1440p - 2K'), (2160, '2160p - 4K')]]) # , ('undetected_selenium', 'Selenium + Undetected Chromium (for bypassing)') # engine = [Choice(value=i, name=k) for i, k in [('selenium', 'Selenium + Chromium'), ('playwright', 'Playwright + Chromium')]]
-    async def screenshot(self, interaction: Interaction, url: str, delay: Range(1, 20), resolution: int = 720, ephemeral: bool = False):
+    async def screenshot(self, interaction: Interaction, url: str, delay: Range[int, 1, 20], resolution: int = 720, ephemeral: bool = False):
         global global_ratelimit
         await interaction.response.defer(ephemeral = ephemeral)
         # conditions to stop executing the command
