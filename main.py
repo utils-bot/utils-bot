@@ -314,16 +314,15 @@ class net(Group):
         global_ratelimit += 1 # get_screenshot_undetected_chromedriver
         els = time()
         data = await get_screenshot(url=url, resolution=resolution, delay=delay, debugmsg=msg)
+        global_ratelimit += -1
         global_elapsed = round(1000*(time() - els))
         await msg.edit(embed=Embed(title="Finished", description="Your request has been processed.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
         if data["success"]:
-            global_ratelimit += -1
             image_bytes = data["image_data"]
             embed = Embed(title='Success',description=f'Here is the website screenshot of {url} \n||*(took {global_elapsed}ms globally, {data["api_elapsed"]}ms for the API to work, elapsed times including requested delays)*||', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
             embed.set_image(url='attachment://screenshot.png')
             await interaction.followup.send(embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
         else:
-            global_ratelimit += -1
             await interaction.followup.send(embed=Embed(title='Error', description=f'Failed to get the screenshot from the API, ask developers for more details... [API error?] ```{data["error"]}```'))
             
     @command(name = 'ip', description='Use APIs to fetch information about a IPv4 address.')
