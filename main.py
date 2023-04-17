@@ -397,8 +397,8 @@ async def on_ready():
     maintenance_status = configurations.default_maintenance_status
     await client.change_presence(activity=Game('starting...'), status=Status.idle)
     await asyncio.sleep(2)
-    ilog("Syncing commands to the owner guild...", 'init', 'info')
-    await tree.sync(guild=Object(id=configurations.owner_guild_id))
+    ilog("Syncing commands to the main guild...", 'init', 'info')
+    await tree.copy_global_to(guild=Object(id=configurations.owner_guild_id))
     ilog("Done! bot is now ready!", 'init', 'info')
     ilog(f"Bot is currently on version {configurations.bot_version}", 'init', 'info')
     ilog(str(client.user) + ' has connected to Discord.', 'init', 'info')
