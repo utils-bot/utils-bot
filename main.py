@@ -336,7 +336,7 @@ class net(Group):
         ipdata = await get_ip_info(ipv4)
         embed = Embed(title=f"IP information", description= f"Here's the information for `{ipv4}`:")
         # embed.add_field(name, ipdata[val])
-        if ipdata['status'] == "success":
+        if True:
             fieldlist = [
                 ("IP", ipdata.get("ip", None)),
                 ("Data Center", ipdata.get("data_center", None)),
