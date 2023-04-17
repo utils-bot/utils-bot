@@ -53,7 +53,7 @@ async def get_screenshot(url, resolution, delay, debugmsg: Webhook, api_url=conf
     debugem = Embed(title="Processing your request...")
     debugem.description = "[...] Validating data\n[] Connect to the API\n[] Fetch image\n[] Return image"
     await debugmsg.edit(embed = debugem)
-    debugem.description = "[OK] Validate data\n[...] Connecting to the API\n[] Fetch image\n[] Return image"
+    debugem.description = "[OK] Validate data\n[...] Waiting API to finish\n[] Fetch image\n[] Return image"
     await debugmsg.edit(embed = debugem)
     async with ClientSession() as session:
         async with session.get(api_url, params=params, headers=headers) as response:
