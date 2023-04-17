@@ -53,7 +53,7 @@ async def get_screenshot(url, resolution, delay, debugmsg: Webhook, api_url=conf
     debugem = Embed(title="Processing your request...")
     debugem.description = "[...] Validating data\n[] Connect to the API\n[] Fetch image\n[] Return image"
     await debugmsg.edit(embed = debugem)
-    debugem.description = "[OK] Validate data\n[...] Connecting to the API\n[] Fetch image\n[] Return image"
+    debugem.description = "[OK] Validate data\n[...] Waiting API to finish\n[] Fetch image\n[] Return image"
     await debugmsg.edit(embed = debugem)
     async with ClientSession() as session:
         async with session.get(api_url, params=params, headers=headers) as response:
@@ -134,9 +134,9 @@ async def sync(interaction: Interaction, ephemeral: bool = False):
         return
     await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
     tree.copy_global_to(guild = Object(id = configurations.owner_guild_id))
-    asyncio.sleep(3)
+    await asyncio.sleep(3)
     await tree.sync()
-    asyncio.sleep(3)
+    await asyncio.sleep(3)
     ilog(f'Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}', logtype = 'info', flag = 'tree')
     await interaction.followup.send(embed=Embed(title="Command tree synced", description='Successfully synced the global command tree to all guilds').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
     await client.change_presence(activity=Game('synced. reloading...'), status=Status.dnd)
@@ -287,7 +287,7 @@ class net(Group):
         elif not p:
             await interaction.followup.send(embed=Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
             return False
-        elif not (i and l):
+        elif not (i or l):
             await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
             return False
         return True
@@ -336,7 +336,7 @@ class net(Group):
         ipdata = await get_ip_info(ipv4)
         embed = Embed(title=f"IP information", description= f"Here's the information for `{ipv4}`:")
         # embed.add_field(name, ipdata[val])
-        if ipdata['status'] == "success":
+        if True:
             fieldlist = [
                 ("IP", ipdata.get("ip", None)),
                 ("Data Center", ipdata.get("data_center", None)),
