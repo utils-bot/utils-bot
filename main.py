@@ -151,13 +151,18 @@ class sys(Group):
         return i
 
     @command(name='eval', description='system - execute python scripts via eval()')
-    async def scripteval(self, interaction: Interaction, script: str, ephemeral: bool = False):
+    async def scripteval(self, interaction: Interaction, script: str, asynced: bool, ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
         if not await self.is_authorized(interaction): return
         await interaction.followup.send(embed=Embed(title='Executing...', description='Executing the script...').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), wait=True)
         await asyncio.sleep(0.5)
         ilog(f'{interaction.user.name}#{interaction.user.discriminator} ({interaction.user.id}) eval-ed: {script}', 'eval', 'warning')
-        result = eval(script)
+        if not asynced:
+            result = eval(script)
+        else:
+            async def temp():
+                return await eval(script)
+            result = await temp()
         if not result:
             await interaction.followup.send(embed=Embed(title="Script executed", description='Script executed successfully, the result, might be `None` or too long to fill in here.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
         else:
@@ -395,7 +400,7 @@ async def on_ready():
     await client.change_presence(activity=Game('starting...'), status=Status.idle)
     await asyncio.sleep(2)
     ilog("Syncing commands to the main guild...", 'init', 'info')
-    await tree.copy_global_to(guild=Object(id=configurations.owner_guild_id))
+    tree.copy_global_to(guild=Object(id=configurations.owner_guild_id))
     ilog("Done! bot is now ready!", 'init', 'info')
     ilog(f"Bot is currently on version {configurations.bot_version}", 'init', 'info')
     ilog(str(client.user) + ' has connected to Discord.', 'init', 'info')
