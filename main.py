@@ -134,13 +134,13 @@ async def sync(interaction: Interaction, ephemeral: bool = False):
         return
     await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
     tree.copy_global_to(guild = Object(id = configurations.owner_guild_id))
-    await asyncio.sleep(3)
+    await asyncio.sleep(5)
     await tree.sync()
-    await asyncio.sleep(3)
     ilog(f'Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}', logtype = 'info', flag = 'tree')
+    await asyncio.sleep(5)
     await interaction.followup.send(embed=Embed(title="Command tree synced", description='Successfully synced the global command tree to all guilds').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
     await client.change_presence(activity=Game('synced. reloading...'), status=Status.dnd)
-    await asyncio.sleep(2)
+    await asyncio.sleep(5)
     await client.change_presence(activity=Game('version ' + configurations.bot_version + ' [outdated]' if not check_bot_version(configurations.bot_version) else ""), status=Status.online)
 
 class sys(Group):
@@ -408,7 +408,7 @@ async def on_ready():
     guilds_num = len(client.guilds)
     members_num = len(set(member for guild in client.guilds for member in guild.members))
     ilog('Connected to ' + str(guilds_num) + ' guilds and ' + str(members_num)  + ' users.', 'init', 'info')
-    await asyncio.sleep(2)
+    await asyncio.sleep(5)
     await client.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
 
 
