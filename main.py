@@ -151,13 +151,13 @@ class sys(Group):
         return i
 
     @command(name='eval', description='system - execute python scripts via eval()')
-    async def scripteval(self, interaction: Interaction, script: str, asynced: bool, ephemeral: bool = False):
+    async def scripteval(self, interaction: Interaction, script: str, awaited: bool = False, ephemeral: bool = False):
         await interaction.response.defer(ephemeral=ephemeral)
         if not await self.is_authorized(interaction): return
         await interaction.followup.send(embed=Embed(title='Executing...', description='Executing the script...').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), wait=True)
         await asyncio.sleep(0.5)
         ilog(f'{interaction.user.name}#{interaction.user.discriminator} ({interaction.user.id}) eval-ed: {script}', 'eval', 'warning')
-        if not asynced:
+        if not awaited:
             result = eval(script)
         else:
             async def temp():
