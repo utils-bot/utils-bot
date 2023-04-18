@@ -264,11 +264,7 @@ FEATURE COMMANDS (beta)
 -------------------------------------------------
 """
 
-async def get_ip_info(ip) -> dict:
-    async with ClientSession() as session:
-        async with session.get(f'https://api.iprisk.info/v1/{ip}') as response:
-            data = await response.json()
-        return data
+
 
 class net(Group):
     async def is_authorized(self, interaction: Interaction):
@@ -291,6 +287,11 @@ class net(Group):
             await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
             return False
         return True
+    async def get_ip_info(ip) -> dict:
+        async with ClientSession() as session:
+            async with session.get(f'https://api.iprisk.info/v1/{ip}') as response:
+                data = await response.json()
+            return data
     @command(name='screenshot', description='BETA - Take a screenshot of a website')
     @describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s) (default: 0)', resolution = 'Resolution of the driver window (Default: 720p)', ephemeral = 'If you want to make the response only visible to you. (default: False)')
     @choices(resolution = [Choice(value=i, name=k) for i, k in [(240, '240p - Minimum'), (360, '360p - Website'), (480, '480p - Standard'), (720, '720p - HD'), (1080, '1080p - Full HD'), (1440, '1440p - 2K'), (2160, '2160p - 4K')]]) # , ('undetected_selenium', 'Selenium + Undetected Chromium (for bypassing)') # engine = [Choice(value=i, name=k) for i, k in [('selenium', 'Selenium + Chromium'), ('playwright', 'Playwright + Chromium')]]
@@ -333,28 +334,24 @@ class net(Group):
         if not (lambda ip: len(x:= ip.split('.')) == 4 and all(part.isdigit() and 0 <= int(part) <= 255 for part in x))(ipv4):
             await interaction.followup.send(embed=Embed(title='Error', description='Input IPv4 address is invalid.', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
             return
-        ipdata = await get_ip_info(ipv4)
+        ipdata = await self.get_ip_info(ipv4)
         embed = Embed(title=f"IP information", description= f"Here's the information for `{ipv4}`:")
         # embed.add_field(name, ipdata[val])
-        if True:
-            fieldlist = [
-                ("IP", ipdata.get("ip", None)),
-                ("Data Center", ipdata.get("data_center", None)),
-                ("Continent", f'{ipdata["geo"].get("continent", "_")} | {ipdata["geo"].get("continent_code", "_")}'),
-                ("Country", f'{ipdata["geo"].get("country", "_")} | {ipdata["geo"].get("country_code", "_")} {ipdata["geo"].get("country_flag_emoji", "?")}'),
-                ("City", ipdata["geo"].get("city", None)),
-                ("Region", f'{ipdata["geo"].get("region", "_")} | {ipdata["geo"].get("region_code", "_")}'),
-                ("\u200B", "\n"),  # blank field separator
-                ("Network Route", ipdata["network"].get("route", None)),
-                ("AS Number", ipdata["network"].get("as_number", None)),
-                ("AS Organization", f'{ipdata["network"].get("as_org", "_")} | {ipdata["network"].get("as_org_alt", "?")}')
-            ]
-            for field_name, field_value in fieldlist:
-                if field_value == None: continue
-                embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=False)
-
-        else:
-            embed.add_field(name="Status", value = f"`{ipdata['status']}`")
+        fieldlist = [
+            ("IP", ipdata.get("ip", None)),
+            ("Data Center", ipdata.get("data_center", None)),
+            ("Continent", f'{ipdata["geo"].get("continent", "_")} | {ipdata["geo"].get("continent_code", "_")}'),
+            ("Country", f'{ipdata["geo"].get("country", "_")} | {ipdata["geo"].get("country_code", "_")} {ipdata["geo"].get("country_flag_emoji", "?")}'),
+            ("City", ipdata["geo"].get("city", None)),
+            ("Region", f'{ipdata["geo"].get("region", "_")} | {ipdata["geo"].get("region_code", "_")}'),
+            ("\u200B", "\n"),  # blank field separator
+            ("Network Route", ipdata["network"].get("route", None)),
+            ("AS Number", ipdata["network"].get("as_number", None)),
+            ("AS Organization", f'{ipdata["network"].get("as_org", "_")} | {ipdata["network"].get("as_org_alt", "?")}')
+        ]
+        for field_name, field_value in fieldlist:
+            if field_value == None: continue
+            embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=False)
         embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         await interaction.followup.send(embed = embed, ephemeral=ephemeral)
 
