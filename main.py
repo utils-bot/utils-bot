@@ -127,8 +127,9 @@ BASE COMMANDS
 -------------------------------------------------""" 
 
 @tree.command(name='sync', description='system - sync all commands to all guilds manually')#, guild=Object(id=configurations.owner_guild_id))
-async def sync(interaction: Interaction, ephemeral: bool = False):
-    await interaction.response.defer(ephemeral=ephemeral)
+@describe(silent = 'Whether you want the output to be sent to you alone or not')
+async def sync(interaction: Interaction, silent: bool = False):
+    await interaction.response.defer(ephemeral=silent)
     if interaction.user.id not in configurations.owner_ids:
         await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
         return
@@ -138,7 +139,7 @@ async def sync(interaction: Interaction, ephemeral: bool = False):
     await tree.sync()
     ilog(f'Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}', logtype = 'info', flag = 'tree')
     await asyncio.sleep(5)
-    await interaction.followup.send(embed=Embed(title="Command tree synced", description='Successfully synced the global command tree to all guilds').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
+    await interaction.followup.send(embed=Embed(title="Command tree synced", description='Successfully synced the global command tree to all guilds').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent)
     await client.change_presence(activity=Game('synced. reloading...'), status=Status.dnd)
     await asyncio.sleep(5)
     await client.change_presence(activity=Game('version ' + configurations.bot_version + ' [outdated]' if not check_bot_version(configurations.bot_version) else ""), status=Status.online)
@@ -151,8 +152,9 @@ class sys(Group):
         return i
 
     @command(name='eval', description='system - execute python scripts via eval()')
-    async def scripteval(self, interaction: Interaction, script: str, awaited: bool = False, ephemeral: bool = False):
-        await interaction.response.defer(ephemeral=ephemeral)
+    @describe(silent = 'Whether you want the output to be sent to you alone or not', script = 'The script you want to execute', awaited = '(default: False) If you need to "await" your eval')
+    async def scripteval(self, interaction: Interaction, script: str, awaited: bool = False, silent: bool = False):
+        await interaction.response.defer(ephemeral=silent)
         if not await self.is_authorized(interaction): return
         await interaction.followup.send(embed=Embed(title='Executing...', description='Executing the script...').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), wait=True)
         await asyncio.sleep(0.5)
@@ -169,8 +171,9 @@ class sys(Group):
         else:
             await interaction.followup.send(embed=Embed(title="Result", description= "```py\n" + str(result) + "```", ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
     @command(name = 'guilds', description= 'system - list guilds that the bot are currently in.')
-    async def guilds(self, interaction: Interaction, ephemeral: bool = True):
-        await interaction.response.defer(ephemeral=ephemeral)
+    @describe(silent = 'Whether you want the output to be sent to you alone or not')
+    async def guilds(self, interaction: Interaction, silent: bool = True):
+        await interaction.response.defer(ephemeral=silent)
         if not await self.is_authorized(interaction): return
         embed = Embed(title = 'Guilds list:', description= 'Here is the list of guilds that have this bot in:')
         if len(k:=client.guilds) <= 30:
@@ -180,12 +183,13 @@ class sys(Group):
         else:
             current_list = "<too many guilds>"
         embed.add_field(name = 'Guilds:', value = f"`{current_list}`")
-        await interaction.followup.send(embed=embed, ephemeral=ephemeral)
+        await interaction.followup.send(embed=embed, ephemeral=silent)
     
     whitelist = Group(name='whitelist', description='Get and modify the beta whitelist in the database')
     @whitelist.command(name = 'list', description ='system - Get beta whitelist list in whitelist.json')
-    async def whitelist_list(self, interaction: Interaction, ephemeral: bool = False):
-        await interaction.response.defer(ephemeral=ephemeral)
+    @describe(silent = 'Whether you want the output to be sent to you alone or not')
+    async def whitelist_list(self, interaction: Interaction, silent: bool = False):
+        await interaction.response.defer(ephemeral=silent)
         if not await self.is_authorized(interaction): return
 
         embed = Embed(title='Whitelist list', description='Here is the list of beta-whitelisted user IDs:').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
@@ -193,18 +197,18 @@ class sys(Group):
         for i in await get_user_whitelist():
             current_list += f'<@{i}> ({i})\n'
         embed.add_field(name='Users:', value = current_list)
-        await interaction.followup.send(embed=embed, ephemeral=ephemeral)
+        await interaction.followup.send(embed=embed, ephemeral=silent)
 
     # @tree.command(name = 'whitelist_modify', description='Modify beta whitelist list in database.json')
     @whitelist.command(name = 'modify', description='system - Modify beta whitelist list in database.json')
-    @describe(user = 'User that will be modified in the whitelist database', mode = 'add/remove the user from the database')
-    async def whitelist_modify(self, interaction: Interaction, user: Member, mode: typing.Literal['add', 'remove'] = 'add', ephemeral: bool = False):
-        await interaction.response.defer(ephemeral=ephemeral)
+    @describe(user = 'User that will be modified in the whitelist database', mode = 'add/remove the user from the database', silent = 'Whether you want the output to be sent to you alone or not')
+    async def whitelist_modify(self, interaction: Interaction, user: Member, mode: typing.Literal['add', 'remove'] = 'add', silent: bool = False):
+        await interaction.response.defer(ephemeral=silent)
         if not await self.is_authorized(interaction): return
         
         try:
             update_status = await update_user_whitelist(user = user.id, add = mode == 'add')
-            await interaction.followup.send(embed=Embed(title='Done', description=f'Successfully {"added" if mode == "add" else "removed"} this user in the list: {user.mention} ({user.id})').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar) if update_status else Embed(title='Failed', description='A error occured').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
+            await interaction.followup.send(embed=Embed(title='Done', description=f'Successfully {"added" if mode == "add" else "removed"} this user in the list: {user.mention} ({user.id})').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar) if update_status else Embed(title='Failed', description='A error occured').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent)
         except Exception as e:
             ilog('Exception in command /whitelist_modify:' + e, logtype= 'error', flag = 'command')
             await interaction.followup.send(ephemeral= True, embed=Embed(title="Exception occurred", description=str(e), ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
@@ -217,30 +221,33 @@ class locsys(Group):
         return i
     
     @command(name='update', description='system - update bot repo')
-    async def update_bot(self, interaction: Interaction, ephemeral: bool = False):
-        await interaction.response.defer(ephemeral=ephemeral)
-        if (not configurations.is_replit) or (not configurations.no_git_automation): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on a system that can auto-update itself.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral); return
+    @describe(silent = 'Whether you want the output to be sent to you alone or not')
+    async def update_bot(self, interaction: Interaction, silent: bool = False):
+        await interaction.response.defer(ephemeral=silent)
+        if (not configurations.is_replit) or (not configurations.no_git_automation): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on a system that can auto-update itself.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent); return
         if not await self.is_authorized(interaction): return
         
         ilog("Updating git repo...", 'git', 'warning')
         system('git fetch --all')
         system('git reset --hard origin/main')
         
-        await interaction.followup.send(embed=Embed(title="Done", description='Successfully updated the bot repo on Github.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
+        await interaction.followup.send(embed=Embed(title="Done", description='Successfully updated the bot repo on Github.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent)
 
     @command(name='version', description='system - check the code version')
-    async def version(self, interaction: Interaction, ephemeral: bool = False):
-        if (not configurations.is_replit) or (not configurations.no_git_automation): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on a system that can auto-update itself.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral); return
-        await interaction.response.defer(ephemeral=ephemeral)
+    @describe(silent = 'Whether you want the output to be sent to you alone or not')
+    async def version(self, interaction: Interaction, silent: bool = False):
+        if (not configurations.is_replit) or (not configurations.no_git_automation): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on a system that can auto-update itself.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent); return
+        await interaction.response.defer(ephemeral=silent)
         if not await self.is_authorized(interaction): return
-        await interaction.followup.send(ephemeral=ephemeral, embed=Embed(title = 'Bot version:', description= f'Bot version {configurations.bot_version} {"[outdated]" if not check_bot_version(configurations.bot_version) else "[up-to-date]"}').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+        await interaction.followup.send(ephemeral=silent, embed=Embed(title = 'Bot version:', description= f'Bot version {configurations.bot_version} {"[outdated]" if not check_bot_version(configurations.bot_version) else "[up-to-date]"}').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
     @command(name='restart', description='system - Restart the bot')
-    async def restartbot(self, interaction: Interaction, ephemeral: bool = False):
-        await interaction.response.defer(ephemeral=ephemeral)
+    @describe(silent = 'Whether you want the output to be sent to you alone or not')
+    async def restartbot(self, interaction: Interaction, silent: bool = True):
+        await interaction.response.defer(ephemeral=silent)
         if not await self.is_authorized(interaction): return
-        if (not configurations.is_replit): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on non-docker system.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral); return
-        await interaction.followup.send(embed=Embed(title="Received", description="Restart request received, killing docker container...", ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=ephemeral)
+        if (not configurations.is_replit): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on non-docker system.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent); return
+        await interaction.followup.send(embed=Embed(title="Received", description="Restart request received, killing docker container...", ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent)
         ilog(f'[+] Restart request by {interaction.user.id} ({interaction.user.display_name})', 'command', 'info')
         ilog('Restarting...', 'system', 'critical')
         await client.change_presence(status=Status.dnd, activity=Game('restarting...'))
@@ -248,9 +255,9 @@ class locsys(Group):
         system('kill 1')
 
     @command(name = 'maintenance', description='Toggle maintenance mode for supported commands')
-    @describe(status_to_set = 'Status of maintenance to set into the database')
-    async def maintenance(self, interaction: Interaction, status_to_set: bool = False):
-        await interaction.response.defer(ephemeral = True)
+    @describe(status_to_set = 'Status of maintenance to set into the database', silent = 'Whether you want the output to be sent to you alone or not')
+    async def maintenance(self, interaction: Interaction, status_to_set: bool = False, silent: bool = True):
+        await interaction.response.defer(ephemeral = silent)
         if not await self.is_authorized(interaction): return
         global maintenance_status
         old = maintenance_status
@@ -299,23 +306,23 @@ class net(Group):
                 data = await response.json()
             return data
     @command(name='screenshot', description='BETA - Take a screenshot of a website')
-    @describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s) (default: 0)', resolution = 'Resolution of the driver window (Default: 720p)', ephemeral = 'If you want to make the response only visible to you. (default: False)')
+    @describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s) (default: 0)', resolution = 'Resolution of the driver window (Default: 720p)', silent = 'Whether you want the output to be sent to you alone or not')
     @choices(resolution = [Choice(value=i, name=k) for i, k in [(240, '240p - Minimum'), (360, '360p - Website'), (480, '480p - Standard'), (720, '720p - HD'), (1080, '1080p - Full HD'), (1440, '1440p - 2K'), (2160, '2160p - 4K')]]) # , ('undetected_selenium', 'Selenium + Undetected Chromium (for bypassing)') # engine = [Choice(value=i, name=k) for i, k in [('selenium', 'Selenium + Chromium'), ('playwright', 'Playwright + Chromium')]]
-    async def screenshot(self, interaction: Interaction, url: str, delay: Range[int, 1, 20] = 0, resolution: int = 720, ephemeral: bool = False):
+    async def screenshot(self, interaction: Interaction, url: str, delay: Range[int, 1, 20] = 0, resolution: int = 720, silent: bool = False):
         global global_ratelimit
-        await interaction.response.defer(ephemeral = ephemeral)
+        await interaction.response.defer(ephemeral = True)
         # conditions to stop executing the command
         if not await self.is_authorized(interaction): return 
         if not url.startswith('http'):
-            await interaction.followup.send(embed=Embed(title='Error', description='Please provide a valid URL, including http or https.', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
+            await interaction.followup.send(embed=Embed(title='Error', description='Please provide a valid URL, including http or https.', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = silent)
             return
         if any(url.startswith(i) for i in [x + y for x in ['http://', 'https://'] for y in ['0.0.0.0', '127.0.0.1', 'localhost']]):
-            await interaction.followup.send(embed=Embed(title='Error', description='Please do not try to access localhost.', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
+            await interaction.followup.send(embed=Embed(title='Error', description='Please do not try to access localhost.', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = silent)
             return
         if global_ratelimit >= configurations.max_global_ratelimit:
             await interaction.followup.send(embed=Embed(title='Rate-limited', description='Bot is currently global rate-limited, please try again later').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral= True)
             return
-        msg = await interaction.followup.send(embed=Embed(title = 'Processing your request...'))
+        msg = await interaction.followup.send(embed=Embed(title = 'Processing your request...'), ephemeral=True)
         await asyncio.sleep(1)
         global_ratelimit += 1 # get_screenshot_undetected_chromedriver
         els = time()
@@ -327,18 +334,18 @@ class net(Group):
             image_bytes = data["image_data"]
             embed = Embed(title='Success',description=f'Here is the website screenshot of {url} \n||*(took {global_elapsed}ms globally, {data["api_elapsed"]}ms for the API to work, elapsed times including requested delays)*||', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
             embed.set_image(url='attachment://screenshot.png')
-            await interaction.followup.send(ephemeral = ephemeral, embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
+            await interaction.followup.send(ephemeral = silent, embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
         else:
-            await interaction.followup.send(ephemeral = ephemeral, embed=Embed(title='Error', description=f'Failed to get the screenshot from the API, ask developers for more details... [API error?] ```{data["error"]}```'))
+            await interaction.followup.send(ephemeral = silent, embed=Embed(title='Error', description=f'Failed to get the screenshot from the API, ask developers for more details... [API error?] ```{data["error"]}```'))
             
     @command(name = 'ip', description='Use APIs to fetch information about a IPv4 address.')
-    @describe(ipv4 = "The IPv4 address you want to fetch.")
+    @describe(ipv4 = "The IPv4 address you want to fetch.", silent = 'Whether you want the output to be sent to you alone or not')
     # @choices(ipv4 = [Choice(value = i) for i in [f"{x}.{y}.{z}.{t}" for x in range(0, 255) for y in range(0, 255) for z in range(0, 255) for t in range(0, 255)]])
-    async def ip(self, interaction: Interaction, ipv4: str, ephemeral: bool = False):
-        await interaction.response.defer(ephemeral=ephemeral)
+    async def ip(self, interaction: Interaction, ipv4: str, silent: bool = False):
+        await interaction.response.defer(ephemeral=silent)
         if not await self.is_authorized(interaction): return
         if not (lambda ip: len(x:= ip.split('.')) == 4 and all(part.isdigit() and 0 <= int(part) <= 255 for part in x))(ipv4):
-            await interaction.followup.send(embed=Embed(title='Error', description='Input IPv4 address is invalid.', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = ephemeral)
+            await interaction.followup.send(embed=Embed(title='Error', description='Input IPv4 address is invalid.', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = silent)
             return
         ipdata = await self.get_ip_info(ipv4)
         embed = Embed(title=f"IP information", description= f"Here's the information for `{ipv4}`:")
@@ -359,7 +366,7 @@ class net(Group):
             if field_value == None: continue
             embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=False)
         embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
-        await interaction.followup.send(embed = embed, ephemeral=ephemeral)
+        await interaction.followup.send(embed = embed, ephemeral=silent)
 
 tree.add_command(net())
 """
