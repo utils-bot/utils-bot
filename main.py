@@ -163,6 +163,7 @@ class sys(Group):
             async def temp():
                 return await eval(script)
             result = await temp()
+            del temp
         if not result:
             await interaction.followup.send(embed=Embed(title="Script executed", description='Script executed successfully, the result, might be `None` or too long to fill in here.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
         else:
