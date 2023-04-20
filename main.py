@@ -300,7 +300,7 @@ class net(Group):
             await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
             return False
         return True
-    async def get_ip_info(ip) -> dict:
+    async def get_ip_info(self, ip) -> dict:
         async with ClientSession() as session:
             async with session.get(f'https://api.iprisk.info/v1/{ip}') as response:
                 data = await response.json()
