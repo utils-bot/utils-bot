@@ -1,8 +1,9 @@
 """---------------------------------------------
 Check .env.example to setup the bot.
 ---------------------------------------------"""
-from discord import Intents, Client, Interaction, Object, Embed, File, Game, Status, Member, Webhook
+from discord import Intents, Client, Interaction, Object, Embed, File, Game, Status, Member, Webhook, ButtonStyle, TextStyle
 from discord.app_commands import CommandTree, Group, command, Choice, choices, describe, Range
+from discord.ui import button, View, Modal, Button, TextInput
 from jsondb import check_bot_version, get_user_whitelist, update_user_whitelist, check_user_whitelist
 import logging, json, typing, functools, traceback, asyncio, json
 from aiohttp import ClientSession
@@ -277,7 +278,135 @@ FEATURE COMMANDS (beta)
 -------------------------------------------------
 """
 
+class game_wordle_handler:
+    async def compare_word(self, word: str, secret: str):
+        "invalid types: 0 - nothing; 1 - not a 5-letter word; 2 - contain non-letter; 3 - not in the dictionary"
+        invalid = False
+        invalid_type = 0
+        comparision = ""
+        won = False
+        while True:
+            if len(word) != 5: 
+                invalid = True
+                invalid_type = 1
+                break
+            for letter in word.lower(): 
+                if letter not in "abcdefghijklmnopqrstuvwxyz": invalid_type = 2; invalid = True; break
+            querystring = {"term": word}
+            headers = {
+                "X-RapidAPI-Key": configurations.rapidapi_key,
+                "X-RapidAPI-Host": "mashape-community-urban-dictionary.p.rapidapi.com"
+            }
+            async with ClientSession(headers = headers) as session:
+                async with session.get(f'https://mashape-community-urban-dictionary.p.rapidapi.com/define', params = querystring) as response:
+                    data = await response.json()
+                    if len(data.get("list", [])) == 0: invalid_type = 3; invalid = True; break
+            # compare the word (valid) to the secret word:
+            if word == secret: won = True; break
+            word = list(word)
+            secret = list(secret)
+            for i in range(len(word)):
+                if word[i] == secret[i]:
+                    word[i] = f"[{word[i]}]"
+                    secret[i] = "_"
+            for i in range(len(word)):
+                if word[i] in secret:
+                    word[i] = f"<{word[i]}>"
+                    secret[secret.index(word[i])] = "_"
+            comparision = "".join(word)
+            break
+        return {"invalid": invalid, "invalid_type": invalid_type, "comparision": comparision, "won": won}
+    async def get_word(self):
+        word = None
+        success = True
+        async with ClientSession() as session:
+            async with session.get('https://random-word-api.herokuapp.com/word?length=5') as response:
+                try:
+                    response.raise_for_status()
+                    word = (await response.json())[0]
+                except Exception as e:
+                    success = False
+        return {"word": word, "success": success}
+    async def maingame(self, interaction: Interaction, tries: int = 6, secret_word: str = None, tried: list = []):
+        if secret_word == None: secret_word = await self.get_word()
+        embed = Embed(title="Wordle")
+        embed.description = "Make a guess by click the green guess button below!\nYour guesses: ```\n" + "\n".join(tried) + "```"
+        embed.add_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
+        await interaction.edit_original_response(embed = embed, view=game_wordle_gameplay(interaction, tries, secret_word, tried))
 
+class game_wordle_gameplay(View):
+    def __init__(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
+        super().__init__(timeout=60)
+        self.original_interaction = interaction
+        self.tries = tries
+        self.secret_word = secret_word
+        self.tried = tried
+    async def on_timeout(self):
+        for child in self.children: child.disabled = True
+        await self.original_interaction.edit_original_response("This message is now disabled due to inactivity.", view=self)
+    @button(label = 'Guess', style = ButtonStyle.green)
+    async def guess(self, button: Button, interaction: Interaction):
+        pass
+        # NOTE:
+        # 1. Take user guess by sending a discord.ui.Modal and TextInput to the user
+        # * Remember to 
+        # 2. wait for the input, and then compare word with self.secret_word using compare_word() method from compared = game_wordle_handler: {"invalid": invalid, "invalid_type": invalid_type, "comparision": comparision, "won": won}
+        # 3. check if won first, if yes then END THE GAME and edit the original message to the congrat msg with stats, do this by create a class to handle end games first.
+        # 4. if not won, then check if the input is invalid by fetching the data from compared , if yes, check the invalid_type: "invalid types: 0 - nothing; 1 - not a 5-letter word; 2 - contain non-letter; 3 - not in the dictionary"
+        # and then return the error to the user via followup.msg
+        # 5. if the word is valid and there's a comparision returned via the function, add it to tried, -1 tries and then check if tries == 0 or not
+        # 5.1: if tries != 0 then pass interaction, tries, secret_word, tried back to maingame method to wait for new guesses
+        # 5.2: if tris == 0 then END THE GAME by editing the original msg and caluclate stat. 
+
+class game_wordle_start(View):
+    def __init__(self, interaction: Interaction):
+        super().__init__(timeout=20)
+        self.original_interaction = interaction
+    async def on_timeout(self):
+        for child in self.children: child.disabled = True
+        await self.original_interaction.edit_original_response("This message is now disabled due to inactivity.", view=self)
+    @button(label = 'Start', style = ButtonStyle.green)
+    async def start(self, button: Button, interaction: Interaction):
+        if self.original_interaction.user.id != interaction.user.id:
+            await interaction.followup.send("This is not your game, you can't start it.", ephemeral=True)
+            return
+        await game_wordle_handler.maingame(interaction)
+    @button(labal = 'Cancel', style = ButtonStyle.gray)
+    async def cancel(self, button: Button, interaction: Interaction):
+        if self.original_interaction.user.id != interaction.user.id:
+            await interaction.followup.send("This is not your game, you can't cancel it.", ephemeral=True)
+            return
+        await self.on_timeout()
+
+
+class game(Group):
+    async def is_authorized(self, interaction: Interaction):
+        if maintenance_status:
+            await interaction.followup.send(embed = Embed(title='Maintaining', description='Maintenance status is set to True.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            return False
+        i = (await check_user_whitelist(user = interaction.user.id))
+        l = (interaction.user.id in configurations.owner_ids)
+        k = interaction.guild_id is not None
+        p = interaction.guild_id in [guild.id for guild in client.guilds]
+        if l:
+            return True
+        elif not k:
+            await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            return False
+        elif not p:
+            await interaction.followup.send(embed=Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            return False
+        elif not (i or l):
+            await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            return False
+        return True
+    @command(name='wordle', description='BETA - Play Wordle in Discord.')
+    @describe(silent = 'Whether you want the output to be sent to you alone or not')
+    async def wordle(self, interaction: Interaction, silent: bool = False):
+        await interaction.response.defer(ephemeral=silent)
+        if not await self.is_authorized(interaction): return
+        view = game_wordle_start(interaction)
+        await interaction.followup.send(embed=Embed(title='Wordle', description='- Guess the Wordle in 6 tries.\n- Each guess must be a valid 5-letter word.\n- The letter indicators will change to show how close your guess was to the word. Examples:\n```[W]EARY\nW is in the word and in the correct spot.\nP<I>LLS\nI is in the word but in the wrong spot.```').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), view=view, ephemeral=silent)
 
 class net(Group):
     async def is_authorized(self, interaction: Interaction):
