@@ -349,14 +349,14 @@ class game_wordle_handler():
         await interaction.edit_original_response(embed = embed, view = None)
 class game_wordle_gameplay(View):
     def __init__(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
-        super().__init__(timeout=60)
+        super().__init__(timeout=120)
         self.original_interaction = interaction
         self.tries = tries
         self.secret_word = secret_word
         self.tried = tried
     async def on_timeout(self):
         for child in self.children: child.disabled = True
-        await self.original_interaction.edit_original_response(content = "This message is now disabled due to inactivity.", view=None)
+        await self.original_interaction.edit_original_response(content = "This game is stopped due to inactivity.", view=None)
     @button(label = 'Guess', style = ButtonStyle.green)
     async def guess(self, interaction: Interaction, button: Button):
         pass
