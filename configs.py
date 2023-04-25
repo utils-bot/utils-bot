@@ -14,3 +14,4 @@ class configurations:
     no_git_automation = environ.get("NO_GIT_AUTOMATION", "NO") == "YES"
     database_url = environ.get("DATABASE_URL", "https://example.com/")
     database_secret = environ.get("DATABASE_SECRET", 'APIkey')
+    rapidapi_key = environ.get("RAPIDAPI_KEY", "APIkey")
