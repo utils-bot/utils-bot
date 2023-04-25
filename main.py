@@ -288,12 +288,7 @@ class game_wordle_handler():
         comparision = ""
         won = False
         while True:
-            if len(word) != 5: 
-                invalid = True
-                invalid_type = 1
-                break
-            for letter in word.lower(): 
-                if letter not in "abcdefghijklmnopqrstuvwxyz": invalid_type = 2; invalid = True; break
+            if any(letter not in "abcdefghijklmnopqrstuvwxyz" for letter in word): invalid_type = 2; invalid = True; break
             querystring = {"term": word}
             headers = {
                 "X-RapidAPI-Key": configurations.rapidapi_key,
@@ -307,11 +302,11 @@ class game_wordle_handler():
             if word == secret: won = True; break
             word = list(word)
             secret = list(secret)
-            for i in range(len(word)):
+            for i in range(5):
                 if word[i] == secret[i]:
                     word[i] = f"[{word[i]}]"
                     secret[i] = "_"
-            for i in range(len(word)):
+            for i in range(5):
                 if word[i] in secret:
                     word[i] = f"<{word[i]}>"
                     secret[secret.index(word[i])] = "_"
@@ -396,7 +391,7 @@ class game_wordle_guess(Modal, title = 'Guess your Wordle'):
             elif compared["invalid_type"] == 2:
                 error_msg = "Your guess should only contain letters."
             elif compared["invalid_type"] == 3:
-                error_msg = "Your guess is not in the dictionary."
+                error_msg = "Your guess-ed word is not in the dictionary."
         # and then return the error to the user via followup.msg
             await interaction.followup.send(error_msg, ephemeral=True)
             return
