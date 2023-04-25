@@ -354,7 +354,7 @@ class game_wordle_gameplay(View):
         self.tried = tried
     async def on_timeout(self):
         for child in self.children: child.disabled = True
-        await self.original_interaction.edit_original_response("This message is now disabled due to inactivity.", view=self)
+        await self.original_interaction.edit_original_response(content = "This message is now disabled due to inactivity.", view=self)
     @button(label = 'Guess', style = ButtonStyle.green)
     async def guess(self, button: Button, interaction: Interaction):
         pass
@@ -413,7 +413,7 @@ class game_wordle_start(View):
         self.original_interaction = interaction
     async def on_timeout(self):
         for child in self.children: child.disabled = True
-        await self.original_interaction.edit_original_response("This message is now disabled due to inactivity.", view=self)
+        await self.original_interaction.edit_original_response(content = "This message is now disabled due to inactivity.", view=self)
     @button(label = 'Start', style = ButtonStyle.green)
     async def start(self, button: Button, interaction: Interaction):
         if self.original_interaction.user.id != interaction.user.id:
