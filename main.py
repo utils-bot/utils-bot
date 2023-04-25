@@ -360,6 +360,7 @@ class game_wordle_gameplay(View):
         pass
         # 1. Take user guess by sending a discord.ui.Modal and TextInput to the user
         interaction.response.send_modal(modal=game_wordle_guess(interaction, tries = self.tries, secret_word = self.secret_word, tried = self.tried))
+        return
 
 
 class game_wordle_guess(Modal, title = 'Guess your Wordle'):
@@ -420,12 +421,14 @@ class game_wordle_start(View):
             await interaction.followup.send("This is not your game, you can't start it.", ephemeral=True)
             return
         await game_wordle_handler.maingame(interaction)
+        return
     @button(label = 'Cancel', style = ButtonStyle.gray)
     async def cancel(self, interaction: Interaction, button: Button):
         if self.original_interaction.user.id != interaction.user.id:
             await interaction.followup.send("This is not your game, you can't cancel it.", ephemeral=True)
             return
         await self.on_timeout()
+        return
 
 
 class game(Group):
