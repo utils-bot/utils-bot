@@ -332,7 +332,7 @@ class game_wordle_handler():
     async def maingame(self, interaction: Interaction, tries: int = 6, secret_word: str = None, tried: list = []):
         if secret_word == None: secret_word = await self.get_word()
         embed = Embed(title="Wordle")
-        embed.description = "Make a guess by click the green guess button below!\nYour guesses: ```\n" + "\n".join(tried) + "```"
+        embed.description = "Make a guess by click the green guess button below!\n`Your guesses:` ```\n" + "\n".join(tried) + "```"
         embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         await interaction.edit_original_response(embed = embed, view=game_wordle_gameplay(interaction, tries, secret_word, tried))
         
@@ -382,11 +382,11 @@ class game_wordle_guess(Modal, title = 'Guess your Wordle'):
         # * Remember to resolve the input (convert to lowercase)
         guess = str(self.word).lower()
         # 2. wait for the input, and then compare word with self.secret_word using compare_word() method from compared = game_wordle_handler: {"invalid": invalid, "invalid_type": invalid_type, "comparision": comparision, "won": won}
-        compared = game_wordle_handler().compare_word(word = guess, secret = self.secret_word)
+        compared = await game_wordle_handler().compare_word(word = guess, secret = self.secret_word)
         # 3. check if won first, if yes then END THE GAME and edit the original message to the congrat msg with stats, do this by create a class to handle end games first.
         if compared.get("won", False):
             # end_game_handler.end_game(interaction, self.tries, self.secret_word, self.tried) <- need further code
-            game_wordle_handler().won(interaction, self.tries, self.secret_word, self.tried)
+            await game_wordle_handler().won(interaction, self.tries, self.secret_word, self.tried)
             return
         # 4. if not won, then check if the input is invalid by fetching the data from compared , if yes, check the invalid_type: "invalid types: 0 - nothing; 1 - not a 5-letter word; 2 - contain non-letter; 3 - not in the dictionary"
         elif compared.get("invalid", True):
@@ -408,7 +408,7 @@ class game_wordle_guess(Modal, title = 'Guess your Wordle'):
             return
         # 5.2: if tris == 0 then END THE GAME by editing the original msg and caluclate stat.      
         elif self.tries == 0:
-            # end_game_handler.end_game(interaction, self.tries, self.secret_word, self.tried) <- need further code
+            await game_wordle_handler.lost(interaction, self.tries, self.secret_word, self.tried)
             return
 
 
