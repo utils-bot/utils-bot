@@ -327,6 +327,7 @@ class game_wordle_handler():
         return {"word": word, "success": success}
     async def maingame(self, interaction: Interaction, tries: int = 6, secret_word: str = None, tried: list = []):
         if secret_word == None: secret_word = await self.get_word()
+        print(secret_word) # debugging
         embed = Embed(title="Wordle")
         embed.description = "Make a guess by click the green guess button below!\n`Your guesses:` ```\n" + "\n".join(tried) + "```"
         embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
