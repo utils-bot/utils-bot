@@ -333,19 +333,19 @@ class game_wordle_handler():
         if secret_word == None: secret_word = await self.get_word()
         embed = Embed(title="Wordle")
         embed.description = "Make a guess by click the green guess button below!\nYour guesses: ```\n" + "\n".join(tried) + "```"
-        embed.add_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
+        embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         await interaction.edit_original_response(embed = embed, view=game_wordle_gameplay(interaction, tries, secret_word, tried))
     async def won(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
         embed = Embed(title="Wordle")
         embed.description = f"You won in {tries} tries!\nThe secret word was: {secret_word}\nYour guesses: ```\n" + "\n".join(tried) + "```"
         embed.add_field(name = "*Analysis*", value = f"*<coming soon, with word difficulty, guess efficiency >*")
-        embed.add_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
+        embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         await interaction.edit_original_response(embed = embed, view = None)
     async def lost(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
         embed = Embed(title="Wordle")
         embed.description = f"You lost!\nThe secret word was: {secret_word}\nYour guesses: ```\n" + "\n".join(tried) + "```"
         embed.add_field(name = "*Analysis*", value = f"*<coming soon, with word difficulty, guess efficiency >*")
-        embed.add_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
+        embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         await interaction.edit_original_response(embed = embed, view = None)
 class game_wordle_gameplay(View):
     def __init__(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
