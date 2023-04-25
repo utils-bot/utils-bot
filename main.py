@@ -420,7 +420,7 @@ class game_wordle_start(View):
             await interaction.followup.send("This is not your game, you can't start it.", ephemeral=True)
             return
         await game_wordle_handler.maingame(interaction)
-    @button(labal = 'Cancel', style = ButtonStyle.gray)
+    @button(label = 'Cancel', style = ButtonStyle.gray)
     async def cancel(self, button: Button, interaction: Interaction):
         if self.original_interaction.user.id != interaction.user.id:
             await interaction.followup.send("This is not your game, you can't cancel it.", ephemeral=True)
