@@ -457,6 +457,8 @@ class game(Group):
         view = game_wordle_start(interaction)
         await interaction.followup.send(embed=Embed(title='Wordle', description='- Guess the Wordle in 6 tries.\n- Each guess must be a valid 5-letter word.\n- The letter indicators will change to show how close your guess was to the word. Examples:\n```[W]EARY\nW is in the word and in the correct spot.\nP<I>LLS\nI is in the word but in the wrong spot.```').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), view=view, ephemeral=silent)
 
+tree.add_command(game())
+
 class net(Group):
     async def is_authorized(self, interaction: Interaction):
         if maintenance_status:
