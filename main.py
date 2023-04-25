@@ -361,7 +361,7 @@ class game_wordle_gameplay(View):
     async def guess(self, interaction: Interaction, button: Button):
         pass
         # 1. Take user guess by sending a discord.ui.Modal and TextInput to the user
-        interaction.response.send_modal(modal=game_wordle_guess(interaction, tries = self.tries, secret_word = self.secret_word, tried = self.tried))
+        interaction.response.send_modal(modal=game_wordle_guess(interaction=self.original_interaction, tries = self.tries, secret_word = self.secret_word, tried = self.tried))
         return
 
 
@@ -416,13 +416,13 @@ class game_wordle_start(View):
         self.original_interaction = interaction
     async def on_timeout(self):
         for child in self.children: child.disabled = True
-        await self.original_interaction.edit_original_response(content = "This message is now disabled due to inactivity.", view=self)
+        await self.original_interaction.edit_original_response(content = "This message is now disabled due to inactivity.", view=None)
     @button(label = 'Start', style = ButtonStyle.green)
     async def start(self, interaction: Interaction, button: Button):
         if self.original_interaction.user.id != interaction.user.id:
             await interaction.followup.send("This is not your game, you can't start it.", ephemeral=True)
             return
-        await game_wordle_handler().maingame(interaction = interaction)
+        await game_wordle_handler().maingame(interaction = self.original_interaction)
         return
     @button(label = 'Cancel', style = ButtonStyle.gray)
     async def cancel(self, interaction: Interaction, button: Button):
