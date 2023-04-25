@@ -379,11 +379,11 @@ class game_wordle_guess(Modal, title = 'Guess your Wordle'):
         # * Remember to resolve the input (convert to lowercase)
         guess = self.word.lower()
         # 2. wait for the input, and then compare word with self.secret_word using compare_word() method from compared = game_wordle_handler: {"invalid": invalid, "invalid_type": invalid_type, "comparision": comparision, "won": won}
-        compared = game_wordle_handler.compare_word(word = guess, secret = self.secret_word)
+        compared = game_wordle_handler().compare_word(word = guess, secret = self.secret_word)
         # 3. check if won first, if yes then END THE GAME and edit the original message to the congrat msg with stats, do this by create a class to handle end games first.
         if compared.get("won", False):
             # end_game_handler.end_game(interaction, self.tries, self.secret_word, self.tried) <- need further code
-            game_wordle_handler.won(interaction, self.tries, self.secret_word, self.tried)
+            game_wordle_handler().won(interaction, self.tries, self.secret_word, self.tried)
             return
         # 4. if not won, then check if the input is invalid by fetching the data from compared , if yes, check the invalid_type: "invalid types: 0 - nothing; 1 - not a 5-letter word; 2 - contain non-letter; 3 - not in the dictionary"
         elif compared.get("invalid", True):
@@ -401,7 +401,7 @@ class game_wordle_guess(Modal, title = 'Guess your Wordle'):
         self.tried.append(compared.get("comparision"))
         # 5.1: if tries != 0 then pass interaction, tries, secret_word, tried back to maingame method to wait for new guesses
         if self.tries != 0:
-            await game_wordle_handler.maingame(interaction = interaction, tries = self.tries, secret_word = self.secret_word, tried = self.tried)
+            await game_wordle_handler().maingame(interaction = interaction, tries = self.tries, secret_word = self.secret_word, tried = self.tried)
             return
         # 5.2: if tris == 0 then END THE GAME by editing the original msg and caluclate stat.      
         elif self.tries == 0:
@@ -422,7 +422,7 @@ class game_wordle_start(View):
         if self.original_interaction.user.id != interaction.user.id:
             await interaction.followup.send("This is not your game, you can't start it.", ephemeral=True)
             return
-        await game_wordle_handler.maingame(interaction = interaction)
+        await game_wordle_handler().maingame(interaction = interaction)
         return
     @button(label = 'Cancel', style = ButtonStyle.gray)
     async def cancel(self, interaction: Interaction, button: Button):
