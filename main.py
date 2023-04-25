@@ -413,7 +413,7 @@ class game_wordle_guess(Modal, title = 'Guess your Wordle'):
 
 class game_wordle_start(View):
     def __init__(self, interaction: Interaction):
-        super().__init__(timeout=20)
+        super().__init__()
         self.original_interaction = interaction
     async def on_timeout(self):
         for child in self.children: child.disabled = True
