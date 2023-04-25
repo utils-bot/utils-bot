@@ -376,11 +376,11 @@ class game_wordle_guess(Modal, title = 'Guess your Wordle'):
         self.tried = tried
     async def on_timeout(self):
         return
-    word: str = TextInput(label = 'Enter your guess', style = TextStyle.short, max_length = 5, required=True, placeholder="Only enter lowercase letters from a-z...")
+    word = TextInput(label = 'Enter your guess', style = TextStyle.short, min_length=5, max_length = 5, required=True, placeholder="Only enter lowercase letters from a-z...")
     async def on_submit(self, interaction: Interaction):
         await interaction.response.defer()
         # * Remember to resolve the input (convert to lowercase)
-        guess = self.word.lower()
+        guess = str(self.word).lower()
         # 2. wait for the input, and then compare word with self.secret_word using compare_word() method from compared = game_wordle_handler: {"invalid": invalid, "invalid_type": invalid_type, "comparision": comparision, "won": won}
         compared = game_wordle_handler().compare_word(word = guess, secret = self.secret_word)
         # 3. check if won first, if yes then END THE GAME and edit the original message to the congrat msg with stats, do this by create a class to handle end games first.
