@@ -335,12 +335,14 @@ class game_wordle_handler():
         embed.description = "Make a guess by click the green guess button below!\nYour guesses: ```\n" + "\n".join(tried) + "```"
         embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         await interaction.edit_original_response(embed = embed, view=game_wordle_gameplay(interaction, tries, secret_word, tried))
+        
     async def won(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
         embed = Embed(title="Wordle")
         embed.description = f"You won in {tries} tries!\nThe secret word was: {secret_word}\nYour guesses: ```\n" + "\n".join(tried) + "```"
         embed.add_field(name = "*Analysis*", value = f"*<coming soon, with word difficulty, guess efficiency >*")
         embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         await interaction.edit_original_response(embed = embed, view = None)
+        
     async def lost(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
         embed = Embed(title="Wordle")
         embed.description = f"You lost!\nThe secret word was: {secret_word}\nYour guesses: ```\n" + "\n".join(tried) + "```"
@@ -361,7 +363,8 @@ class game_wordle_gameplay(View):
     async def guess(self, interaction: Interaction, button: Button):
         pass
         # 1. Take user guess by sending a discord.ui.Modal and TextInput to the user
-        interaction.response.send_modal(game_wordle_guess(interaction=self.original_interaction, tries = self.tries, secret_word = self.secret_word, tried = self.tried))
+        await interaction.response.defer()
+        await interaction.response.send_modal(game_wordle_guess(interaction=self.original_interaction, tries = self.tries, secret_word = self.secret_word, tried = self.tried))
         return
 
 
@@ -376,6 +379,7 @@ class game_wordle_guess(Modal, title = 'Guess your Wordle'):
         return
     word: str = TextInput(label = 'Enter your guess', style = TextStyle.short, max_length = 5, required=True, placeholder="Only enter lowercase letters from a-z...")
     async def on_submit(self, interaction: Interaction):
+        await interaction.response.defer()
         # * Remember to resolve the input (convert to lowercase)
         guess = self.word.lower()
         # 2. wait for the input, and then compare word with self.secret_word using compare_word() method from compared = game_wordle_handler: {"invalid": invalid, "invalid_type": invalid_type, "comparision": comparision, "won": won}
@@ -423,6 +427,7 @@ class game_wordle_start(View):
             await interaction.followup.send("This is not your game, you can't start it.", ephemeral=True)
             return
         await game_wordle_handler().maingame(interaction = self.original_interaction)
+        await interaction.response.defer()
         return
     @button(label = 'Cancel', style = ButtonStyle.gray)
     async def cancel(self, interaction: Interaction, button: Button):
@@ -430,6 +435,7 @@ class game_wordle_start(View):
             await interaction.followup.send("This is not your game, you can't cancel it.", ephemeral=True)
             return
         await self.on_timeout()
+        await interaction.response.defer()
         return
 
 
