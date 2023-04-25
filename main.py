@@ -348,7 +348,7 @@ class game_wordle_handler():
 
 class game_wordle_gameplay(View):
     def __init__(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
-        super().__init__(timeout=120)
+        super().__init__(timeout=240)
         self.original_interaction = interaction
         self.tries = tries
         self.secret_word = secret_word
