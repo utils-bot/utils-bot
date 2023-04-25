@@ -354,7 +354,7 @@ class game_wordle_gameplay(View):
         self.tried = tried
     async def on_timeout(self):
         for child in self.children: child.disabled = True
-        await self.original_interaction.edit_original_response(content = "This message is now disabled due to inactivity.", view=self)
+        await self.original_interaction.edit_original_response(content = "This message is now disabled due to inactivity.", view=None)
     @button(label = 'Guess', style = ButtonStyle.green)
     async def guess(self, interaction: Interaction, button: Button):
         pass
@@ -399,7 +399,7 @@ class game_wordle_guess(Modal, title = 'Guess your Wordle'):
         self.tried.append(compared.get("comparision"))
         # 5.1: if tries != 0 then pass interaction, tries, secret_word, tried back to maingame method to wait for new guesses
         if self.tries != 0:
-            await game_wordle_handler.maingame(interaction, tries = self.tries, secret_word = self.secret_word, tried = self.tried)
+            await game_wordle_handler.maingame(interaction = interaction, tries = self.tries, secret_word = self.secret_word, tried = self.tried)
             return
         # 5.2: if tris == 0 then END THE GAME by editing the original msg and caluclate stat.      
         elif self.tries == 0:
@@ -420,7 +420,7 @@ class game_wordle_start(View):
         if self.original_interaction.user.id != interaction.user.id:
             await interaction.followup.send("This is not your game, you can't start it.", ephemeral=True)
             return
-        await game_wordle_handler.maingame(interaction)
+        await game_wordle_handler.maingame(interaction = interaction)
         return
     @button(label = 'Cancel', style = ButtonStyle.gray)
     async def cancel(self, interaction: Interaction, button: Button):
