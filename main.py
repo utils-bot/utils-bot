@@ -361,7 +361,7 @@ class game_wordle_gameplay(View):
     async def guess(self, interaction: Interaction, button: Button):
         pass
         # 1. Take user guess by sending a discord.ui.Modal and TextInput to the user
-        interaction.response.send_modal(modal=game_wordle_guess(interaction=self.original_interaction, tries = self.tries, secret_word = self.secret_word, tried = self.tried))
+        interaction.response.send_modal(game_wordle_guess(interaction=self.original_interaction, tries = self.tries, secret_word = self.secret_word, tried = self.tried))
         return
 
 
