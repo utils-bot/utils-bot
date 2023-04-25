@@ -320,7 +320,7 @@ class game_wordle_handler:
         word = None
         success = True
         async with ClientSession() as session:
-            async with session.get('https://random-word-api.herokuapp.com/word?length=5') as response:
+            async with session.get('https://random-word-api.herokuapp.com/word?length=5') as response: 
                 try:
                     response.raise_for_status()
                     word = (await response.json())[0]
@@ -333,7 +333,18 @@ class game_wordle_handler:
         embed.description = "Make a guess by click the green guess button below!\nYour guesses: ```\n" + "\n".join(tried) + "```"
         embed.add_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         await interaction.edit_original_response(embed = embed, view=game_wordle_gameplay(interaction, tries, secret_word, tried))
-
+    async def won(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
+        embed = Embed(title="Wordle")
+        embed.description = f"You won in {tries} tries!\nThe secret word was: {secret_word}\nYour guesses: ```\n" + "\n".join(tried) + "```"
+        embed.add_field(name = "*Analysis*", value = f"*<coming soon, with word difficulty, guess efficiency >*")
+        embed.add_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
+        await interaction.edit_original_response(embed = embed, view = None)
+    async def lost(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
+        embed = Embed(title="Wordle")
+        embed.description = f"You lost!\nThe secret word was: {secret_word}\nYour guesses: ```\n" + "\n".join(tried) + "```"
+        embed.add_field(name = "*Analysis*", value = f"*<coming soon, with word difficulty, guess efficiency >*")
+        embed.add_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
+        await interaction.edit_original_response(embed = embed, view = None)
 class game_wordle_gameplay(View):
     def __init__(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
         super().__init__(timeout=60)
@@ -347,16 +358,54 @@ class game_wordle_gameplay(View):
     @button(label = 'Guess', style = ButtonStyle.green)
     async def guess(self, button: Button, interaction: Interaction):
         pass
-        # NOTE:
         # 1. Take user guess by sending a discord.ui.Modal and TextInput to the user
-        # * Remember to 
+        interaction.response.send_modal(modal=game_wordle_guess(interaction, tries = self.tries, secret_word = self.secret_word, tried = self.tried))
+
+
+class game_wordle_guess(Modal, title = 'Guess your Wordle'):
+    def __init__(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
+        super().__init__(timeout=30)
+        self.interaction = interaction
+        self.tries = tries
+        self.secret_word = secret_word
+        self.tried = tried
+    async def on_timeout(self):
+        return
+    word: str = TextInput(label = 'Enter your guess', style = TextStyle.short, max_length = 5, required=True, placeholder="Only enter lowercase letters from a-z...")
+    async def on_submit(self, interaction: Interaction):
+        # * Remember to resolve the input (convert to lowercase)
+        guess = self.word.lower()
         # 2. wait for the input, and then compare word with self.secret_word using compare_word() method from compared = game_wordle_handler: {"invalid": invalid, "invalid_type": invalid_type, "comparision": comparision, "won": won}
+        compared = game_wordle_handler.compare_word(word = guess, secret = self.secret_word)
         # 3. check if won first, if yes then END THE GAME and edit the original message to the congrat msg with stats, do this by create a class to handle end games first.
+        if compared.get("won", False):
+            # end_game_handler.end_game(interaction, self.tries, self.secret_word, self.tried) <- need further code
+            game_wordle_handler.won(interaction, self.tries, self.secret_word, self.tried)
+            return
         # 4. if not won, then check if the input is invalid by fetching the data from compared , if yes, check the invalid_type: "invalid types: 0 - nothing; 1 - not a 5-letter word; 2 - contain non-letter; 3 - not in the dictionary"
+        elif compared.get("invalid", True):
+            if compared["invalid_type"] == 1:
+                error_msg = "Your guess should be a 5-letter word."
+            elif compared["invalid_type"] == 2:
+                error_msg = "Your guess should only contain letters."
+            elif compared["invalid_type"] == 3:
+                error_msg = "Your guess is not in the dictionary."
         # and then return the error to the user via followup.msg
+            await interaction.followup.send(error_msg, ephemeral=True)
+            return
         # 5. if the word is valid and there's a comparision returned via the function, add it to tried, -1 tries and then check if tries == 0 or not
+        self.tries -= 1
+        self.tried.append(compared.get("comparision"))
         # 5.1: if tries != 0 then pass interaction, tries, secret_word, tried back to maingame method to wait for new guesses
-        # 5.2: if tris == 0 then END THE GAME by editing the original msg and caluclate stat. 
+        if self.tries != 0:
+            await game_wordle_handler.maingame(interaction, tries = self.tries, secret_word = self.secret_word, tried = self.tried)
+            return
+        # 5.2: if tris == 0 then END THE GAME by editing the original msg and caluclate stat.      
+        elif self.tries == 0:
+            # end_game_handler.end_game(interaction, self.tries, self.secret_word, self.tried) <- need further code
+            return
+
+
 
 class game_wordle_start(View):
     def __init__(self, interaction: Interaction):
@@ -537,7 +586,7 @@ async def on_ready():
     await client.change_presence(activity=Game('starting...'), status=Status.idle)
     await asyncio.sleep(2)
     ilog("Syncing commands to the main guild...", 'init', 'info')
-    tree.copy_global_to(guild=Object(id=configurations.owner_guild_id))
+    await tree.sync(guild = Object(id=configurations.owner_guild_id))
     ilog("Done! bot is now ready!", 'init', 'info')
     ilog(f"Bot is currently on version {configurations.bot_version}", 'init', 'info')
     ilog(str(client.user) + ' has connected to Discord.', 'init', 'info')
