@@ -278,7 +278,7 @@ FEATURE COMMANDS (beta)
 -------------------------------------------------
 """
 
-class game_wordle_handler:
+class game_wordle_handler():
     async def compare_word(self, word: str, secret: str):
         "invalid types: 0 - nothing; 1 - not a 5-letter word; 2 - contain non-letter; 3 - not in the dictionary"
         invalid = False
