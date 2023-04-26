@@ -408,7 +408,7 @@ class game_wordle_guess(Modal, title = 'Guess your Wordle'):
             return
         # 5.2: if tris == 0 then END THE GAME by editing the original msg and caluclate stat.      
         elif self.tries == 0:
-            await game_wordle_handler.lost(interaction, self.tries, self.secret_word, self.tried)
+            await game_wordle_handler().lost(interaction, self.tries, self.secret_word, self.tried)
             return
 
 
