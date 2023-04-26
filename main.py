@@ -282,7 +282,7 @@ class game_wordle_handler():
     def __init__(self) -> None:
         pass
     async def compare_word(self, word: str, secret: str):
-        "invalid types: 0 - nothing; 1 - not a 5-letter word; 2 - contain non-letter; 3 - not in the dictionary"
+        "invalid types: 0 - nothing; 2 - contain non-letter; 3 - not in the dictionary"
         invalid = False
         invalid_type = 0
         comparision = ""
@@ -298,14 +298,16 @@ class game_wordle_handler():
                 async with session.get(f'https://mashape-community-urban-dictionary.p.rapidapi.com/define', params = querystring) as response:
                     data = await response.json()
                     if len(data.get("list", [])) == 0: invalid_type = 3; invalid = True; break
-            # compare the word (valid) to the secret word:
+            # compare the word (valid) to the secret word:-> NEED TO FIX
             if word == secret: won = True; break
             word = temp = list(word)[:]
             secret = list(secret)
+            print(f"word: {word}, temp: {temp}, secret: {secret}") # debugging
             for i in range(5):
                 if word[i] == secret[i]:
                     temp[i] = f"[{word[i]}]"
                     secret[i] = "_"
+            print(f"word: {word}, temp: {temp}, secret: {secret}") # debugging
             for i in range(5):
                 if word[i] in secret:
                     temp[i] = f"<{word[i]}>"
