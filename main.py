@@ -54,7 +54,7 @@ class MyClient(Client):
         unix_uptime = round(time())
         # do syncs
         ilog("Syncing commands to the main guild...", 'init', 'info')
-        self.tree.copy_global_to(guild = Object(id=configurations.owner_guild_id))
+        # self.tree.copy_global_to(guild = Object(id=configurations.owner_guild_id))
         await self.tree.sync(guild = Object(id=configurations.owner_guild_id))
         ilog("Done! Bot will be ready soon", 'init', 'info')
         return
@@ -155,7 +155,7 @@ async def sync(interaction: Interaction, silent: bool = False):
         await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
         return
     await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
-    tree.copy_global_to(guild = Object(id = configurations.owner_guild_id))
+    # tree.copy_global_to(guild = Object(id = configurations.owner_guild_id))
     await asyncio.sleep(5)
     await tree.sync()
     ilog(f'Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}', logtype = 'info', flag = 'tree')
