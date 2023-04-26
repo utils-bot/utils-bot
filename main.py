@@ -125,7 +125,7 @@ async def on_error(interaction: Interaction, error):
     minlog_under800 = minlog[-800:] 
     es = ('Check the console for more information.' if len(minlog) > 1000 else '') + f"```py\n{('...' if minlog_under800 != minlog else '') + minlog_under800}```" + f"```py\n{cleaned.splitlines()[-1]}```"
     # if (i:=interaction.user.id) in configurations.owner_guild_id or i in get_whitelist():
-    ilog('Exception in a application command: ' + full_err + '--------------------end of exception--------------------', logtype= 'error', flag = 'command')
+    ilog('---Exception in a application command: ' + full_err + '--------------------end of exception--------------------', logtype= 'error', flag = 'command')
     await interaction.followup.send(embed=Embed(title="Exception occurred:", description= es, ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
     # else:
         # await interaction.followup.send(embed=Embed(title="Exception occurred", description='Contact the bot owner(s) for more information.', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
@@ -429,6 +429,7 @@ class game_wordle():
         
     class startView(View):
         def __init__(self, main) -> None:
+            super().__init__()
             self.main = main
         async def on_timeout(self):
             return
