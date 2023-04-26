@@ -303,12 +303,12 @@ class game_wordle_handler():
             word = list(word)
             temp = list(word)[:]
             secret = list(secret)
-            print(f"word: {word}, temp: {temp}, secret: {secret}") # debugging
+            #print(f"word: {word}, temp: {temp}, secret: {secret}") # debugging
             for i in range(5):
                 if word[i] == secret[i]:
                     temp[i] = f"[{word[i]}]"
                     secret[i] = "_"
-            print(f"word: {word}, temp: {temp}, secret: {secret}") # debugging
+            #print(f"word: {word}, temp: {temp}, secret: {secret}") # debugging
             for i in range(5):
                 if word[i] in secret:
                     temp[i] = f"<{word[i]}>"
@@ -379,7 +379,7 @@ class game_wordle_guess(Modal, title = 'Guess your Wordle'):
         await interaction.response.defer()
         # * Remember to resolve the input (convert to lowercase)
         guess = str(self.word).lower()
-        print(guess) # for debugging
+        #print(guess) # for debugging
         # 2. wait for the input, and then compare word with self.secret_word using compare_word() method from compared = game_wordle_handler: {"invalid": invalid, "invalid_type": invalid_type, "comparision": comparision, "won": won}
         compared = await game_wordle_handler().compare_word(word = guess, secret = self.secret_word)
         # 3. check if won first, if yes then END THE GAME and edit the original message to the congrat msg with stats, do this by create a class to handle end games first.
