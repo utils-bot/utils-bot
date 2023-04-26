@@ -382,11 +382,11 @@ class game_wordle():
         embed.set_footer(text = f'Requested by {ego.interaction.user.name}#{ego.interaction.user.discriminator}', icon_url=ego.interaction.user.avatar)
         await ego.interaction.edit_original_response(embed = embed, view = None)
 
-    class guessModal(Modal):
+    class guessModal(Modal, title='Guess your Wordle'):
         def __init__(self, main) -> None:
-            super().__init__(title='Guess your Wordle')
+            super().__init__()
             self.main = main
-            word = TextInput(label = 'Enter your guess', style = TextStyle.short, min_length=5, max_length = 5, required=True, placeholder="Only enter lowercase letters from a-z...")
+        word = TextInput(label = 'Enter your guess', style = TextStyle.short, min_length=5, max_length = 5, required=True, placeholder="Only enter lowercase letters from a-z...")
         async def on_submit(self, interaction: Interaction):
             await interaction.response.defer()
             guess = str(self.word).lower()
