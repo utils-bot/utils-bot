@@ -300,7 +300,8 @@ class game_wordle_handler():
                     if len(data.get("list", [])) == 0: invalid_type = 3; invalid = True; break
             # compare the word (valid) to the secret word:-> NEED TO FIX
             if word == secret: won = True; break
-            word = temp = list(word)[:]
+            word = list(word)
+            temp = list(word)[:]
             secret = list(secret)
             print(f"word: {word}, temp: {temp}, secret: {secret}") # debugging
             for i in range(5):
