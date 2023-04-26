@@ -431,7 +431,8 @@ class game_wordle_start(View):
         if self.original_interaction.user.id != interaction.user.id:
             await interaction.followup.send("This is not your game, you can't cancel it.", ephemeral=True)
             return
-        await self.on_timeout()
+        for child in self.children: child.disabled = True
+        await self.original_interaction.edit_original_response(view=self)
         await interaction.response.defer()
         return
 
