@@ -343,7 +343,7 @@ class game_wordle_handler():
         
     async def lost(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
         embed = Embed(title="Wordle")
-        embed.description = f"You lost!\nThe secret word was: `{secret_word}`\nYour guesses: ```\n" + "\n".join(tried) + "```"
+        embed.description = f"**You lost!** :joy: \nThe secret word was: `{secret_word}`\nYour guesses: ```\n" + "\n".join(tried) + "```"
         embed.add_field(name = "*Analysis*", value = f"*<coming soon, with word difficulty, guess efficiency >*")
         embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         await interaction.edit_original_response(embed = embed, view = None)
