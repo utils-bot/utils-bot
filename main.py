@@ -424,7 +424,7 @@ class game_wordle():
             if self.main.interaction.user.id != interaction.user.id:
                 await interaction.followup.send("This is not your game, you can't make a guess.", ephemeral=True)
                 return
-            await self.main.interaction.response.send_modal(self.main.guess())
+            await interaction.response.send_modal(self.main.guess())
             return
         
     class startView(View):
