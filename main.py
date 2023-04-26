@@ -278,7 +278,7 @@ FEATURE COMMANDS (beta)
 -------------------------------------------------
 """
 
-class game_wordle_handler():
+class game_wordle_handler:
     def __init__(self) -> None:
         pass
     async def compare_word(self, word: str, secret: str):
@@ -336,15 +336,15 @@ class game_wordle_handler():
         
     async def won(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
         embed = Embed(title="Wordle")
-        embed.description = f"You won in {tries} tries!\nThe secret word was: {secret_word}\nYour guesses: ```\n" + "\n".join(tried) + "```"
-        embed.add_field(name = "*Analysis*", value = f"*<coming soon, with word difficulty, guess efficiency >*")
+        embed.description = f"**You won in {tries} tries!** :heart:\nThe secret word was: {secret_word}\nYour guesses: ```\n" + "\n".join(tried) + "```"
+        embed.add_field(name = "*Analysis*", value = f"*<coming soon, with word difficulty, guess efficiency>*")
         embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         await interaction.edit_original_response(embed = embed, view = None)
         
     async def lost(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
         embed = Embed(title="Wordle")
         embed.description = f"**You lost!** :joy: \nThe secret word was: `{secret_word}`\nYour guesses: ```\n" + "\n".join(tried) + "```"
-        embed.add_field(name = "*Analysis*", value = f"*<coming soon, with word difficulty, guess efficiency >*")
+        embed.add_field(name = "*Analysis*", value = f"*<coming soon, with word difficulty, guess efficiency>*")
         embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         await interaction.edit_original_response(embed = embed, view = None)
 
@@ -384,7 +384,6 @@ class game_wordle_guess(Modal, title = 'Guess your Wordle'):
         compared = await game_wordle_handler().compare_word(word = guess, secret = self.secret_word)
         # 3. check if won first, if yes then END THE GAME and edit the original message to the congrat msg with stats, do this by create a class to handle end games first.
         if compared.get("won", False):
-            # end_game_handler.end_game(interaction, self.tries, self.secret_word, self.tried) <- need further code
             await game_wordle_handler().won(interaction, self.tries, self.secret_word, self.tried)
             return
         # 4. if not won, then check if the input is invalid by fetching the data from compared , if yes, check the invalid_type: "invalid types: 0 - nothing; 1 - not a 5-letter word; 2 - contain non-letter; 3 - not in the dictionary"
@@ -401,7 +400,7 @@ class game_wordle_guess(Modal, title = 'Guess your Wordle'):
         # 5. if the word is valid and there's a comparision returned via the function, add it to tried, -1 tries and then check if tries == 0 or not
         self.tries -= 1
         self.tried.append(compared.get("comparision"))
-        # 5.1: if tries != 0 then pass interaction, tries, secret_word, tried back to maingame method to wait for new guesses
+        # 5.1: if tries != 0 then pass interaction, tries, secret_word, tried back to main game method to wait for new guesses
         if self.tries > 0:
             await game_wordle_handler().maingame(interaction = interaction, tries = self.tries, secret_word = self.secret_word, tried = self.tried)
             return
@@ -423,7 +422,8 @@ class game_wordle_start(View):
         if self.original_interaction.user.id != interaction.user.id:
             await interaction.followup.send("This is not your game, you can't start it.", ephemeral=True)
             return
-        await game_wordle_handler().maingame(interaction = self.original_interaction)
+        handler = game_wordle_handler()
+        await handler.maingame(interaction = self.original_interaction)
         await interaction.response.defer()
         return
     @button(label = 'Cancel', style = ButtonStyle.gray)
@@ -463,7 +463,8 @@ class game(Group):
         await interaction.response.defer(ephemeral=silent)
         if not await self.is_authorized(interaction): return
         view = game_wordle_start(interaction)
-        await interaction.followup.send(embed=Embed(title='Wordle', description='- Guess the Wordle in 6 tries.\n- Each guess must be a valid 5-letter word.\n- The letter indicators will change to show how close your guess was to the word. Examples:\n```[W]EARY\nW is in the word and in the correct spot.\nP<I>LLS\nI is in the word but in the wrong spot.```').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), view=view, ephemeral=silent)
+        await interaction.followup.send(embed=Embed(title='Wordle', description='- Guess the Wordle in 6 tries.\n- Each guess must be a valid 5-letter word.\n- The letter indicators will change to show how close your guess was to the word. Examples:\n```[W]EARY\nW is in the word and in the correct spot.\nP<I>LLS\nI is in the word but in the wrong spot.```')\
+                                        .set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), view=view, ephemeral=silent)
 
 tree.add_command(game())
 
