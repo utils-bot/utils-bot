@@ -406,7 +406,7 @@ class game_wordle():
             self.main.tries -=1
             self.main.tried.append(compared.get("comparision"))
             if self.main.tries > 0:
-                await self.main.gamplay() # back to gameplay
+                await self.main.gameplay() # back to gameplay
                 return
             else:
                 # TODO: lost function
