@@ -39,8 +39,28 @@ DEFINING VARS
 intents = Intents.default()
 intents.members = True
 # intents.message_content = True
-client = Client(intents=intents)
-tree = CommandTree(client)
+class MyClient(Client):
+    def __init__(self, *, intents: Intents) -> None:
+        super().__init__(intents=intents)
+        self.tree = CommandTree(self)
+        return
+    async def setup_hook(self):
+        # varible reset
+        global unix_uptime
+        global global_ratelimit
+        global maintenance_status
+        global_ratelimit = 0
+        maintenance_status = configurations.default_maintenance_status
+        unix_uptime = round(time())
+        # do syncs
+        ilog("Syncing commands to the main guild...", 'init', 'info')
+        self.tree.copy_global_to(guild = Object(id=configurations.owner_guild_id))
+        await self.tree.sync(guild = Object(id=configurations.owner_guild_id))
+        ilog("Done! Bot will be ready soon", 'init', 'info')
+        return
+
+client = MyClient(intents=intents)
+tree = client.tree
 
 async def antiblock(blocking_func: typing.Callable, *args, **kwargs) -> typing.Any:
     func = functools.partial(blocking_func, *args, **kwargs)
@@ -278,10 +298,23 @@ FEATURE COMMANDS (beta)
 -------------------------------------------------
 """
 
-class game_wordle_handler:
-    def __init__(self) -> None:
-        pass
-    async def compare_word(self, word: str, secret: str):
+
+
+
+class game_wordle():
+    def __init__(ego, interaction: Interaction) -> None:
+        ego.interaction = interaction
+        ego.tries = 6
+        ego.secret_word = None
+        ego.tried = []
+    async def gameplay(ego):
+        if ego.secret_word == None: ego.secret_word = (await ego.get_word()).get("word", "smhhh")
+        embed = Embed(title="Wordle")
+        embed.description = "Make a guess by click the green guess button below!\n`Your guesses:` ```\n" + "\n".join(ego.tried) + "```"
+        embed.set_footer(text = f'Requested by {ego.interaction.user.name}#{ego.interaction.user.discriminator}', icon_url=ego.interaction.user.avatar)
+        await ego.interaction.edit_original_response(embed=embed, view=ego.play())
+    
+    async def compare_word(ego, word: str, secret: str):
         "invalid types: 0 - nothing; 2 - contain non-letter; 3 - not in the dictionary"
         invalid = False
         invalid_type = 0
@@ -316,7 +349,8 @@ class game_wordle_handler:
             comparision = "".join(temp)
             break
         return {"invalid": invalid, "invalid_type": invalid_type, "comparision": comparision, "won": won}
-    async def get_word(self):
+    
+    async def get_word(ego):
         word = None
         success = True
         async with ClientSession() as session:
@@ -327,114 +361,91 @@ class game_wordle_handler:
                 except Exception as e:
                     success = False
         return {"word": word, "success": success}
-    async def maingame(self, interaction: Interaction, tries: int = 6, secret_word: str = None, tried: list = []):
-        if secret_word == None: secret_word = (await self.get_word()).get("word", "smhhh")
+    
+    def start(ego) -> None:
+        return ego.startView(ego)
+    def play(ego) -> None:
+        return ego.gameplayView(ego)
+    def guess(ego) -> None:
+        return ego.guessModal(ego)
+    async def won(ego) -> None:
         embed = Embed(title="Wordle")
-        embed.description = "Make a guess by click the green guess button below!\n`Your guesses:` ```\n" + "\n".join(tried) + "```"
-        embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
-        await interaction.edit_original_response(embed = embed, view=game_wordle_gameplay(interaction, tries, secret_word, tried))
-        
-    async def won(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
-        embed = Embed(title="Wordle")
-        embed.description = f"**You won in {tries} tries!** :heart:\nThe secret word was: {secret_word}\nYour guesses: ```\n" + "\n".join(tried) + "```"
+        embed.description = f"**You won in {ego.tries} tries!** :heart:\nThe secret word was: {ego.secret_word}\nYour guesses: ```\n" + "\n".join(ego.tried) + "```"
         embed.add_field(name = "*Analysis*", value = f"*<coming soon, with word difficulty, guess efficiency>*")
-        embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
-        await interaction.edit_original_response(embed = embed, view = None)
-        
-    async def lost(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
+        embed.set_footer(text = f'Requested by {ego.interaction.user.name}#{ego.interaction.user.discriminator}', icon_url=ego.interaction.user.avatar)
+        await ego.interaction.edit_original_response(embed = embed, view = None)
+        # GAME ENdED
+    async def lost(ego) -> None:
         embed = Embed(title="Wordle")
-        embed.description = f"**You lost!** :joy: \nThe secret word was: `{secret_word}`\nYour guesses: ```\n" + "\n".join(tried) + "```"
+        embed.description = f"**You lost!** :joy: \nThe secret word was: `{ego.secret_word}`\nYour guesses: ```\n" + "\n".join(ego.tried) + "```"
         embed.add_field(name = "*Analysis*", value = f"*<coming soon, with word difficulty, guess efficiency>*")
-        embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
-        await interaction.edit_original_response(embed = embed, view = None)
+        embed.set_footer(text = f'Requested by {ego.interaction.user.name}#{ego.interaction.user.discriminator}', icon_url=ego.interaction.user.avatar)
+        await ego.interaction.edit_original_response(embed = embed, view = None)
 
-class game_wordle_gameplay(View):
-    def __init__(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
-        super().__init__(timeout=240)
-        self.original_interaction = interaction
-        self.tries = tries
-        self.secret_word = secret_word
-        self.tried = tried
-    async def on_timeout(self):
-        for child in self.children: child.disabled = True
-        await self.original_interaction.edit_original_response(content = "This game is stopped due to inactivity.", view=None)
-    @button(label = 'Guess', style = ButtonStyle.green)
-    async def guess(self, interaction: Interaction, button: Button):
-        pass
-        # 1. Take user guess by sending a discord.ui.Modal and TextInput to the user
-        await interaction.response.send_modal(game_wordle_guess(interaction=self.original_interaction, tries = self.tries, secret_word = self.secret_word, tried = self.tried))
-        return
+    class guessModal(Modal):
+        def __init__(self, main) -> None:
+            super().__init__(title='Guess your Wordle')
+            self.main = main
+            word = TextInput(label = 'Enter your guess', style = TextStyle.short, min_length=5, max_length = 5, required=True, placeholder="Only enter lowercase letters from a-z...")
+        async def on_submit(self, interaction: Interaction):
+            await interaction.response.defer()
+            guess = str(self.word).lower()
+            compared = await self.main.compare_word(guess, self.main.secret_word)
+            if compared.get("won", False):
+                # TODO: make won function
+                return
+            elif compared.get("invalid", True):
+                if compared["invalid_type"] == 1:
+                    error_msg = "Your guess should be a 5-letter word."
+                elif compared["invalid_type"] == 2:
+                    error_msg = "Your guess should only contain letters."
+                elif compared["invalid_type"] == 3:
+                    error_msg = "Your guess-ed word is not in the dictionary."
+                await interaction.folloup.send(error_msg, ephemeral = True)
+                return
+            self.main.tries -=1
+            self.main.tried.append(compared.get("comparision"))
+            if self.main.tries > 0:
+                await self.main.gamplay() # back to gameplay
+                return
+            else:
+                # TODO: lost function
+                return
 
-class game_wordle_guess(Modal, title = 'Guess your Wordle'):
-    def __init__(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
-        super().__init__(timeout=30)
-        self.interaction = interaction
-        self.tries = tries
-        self.secret_word = secret_word
-        self.tried = tried
-    async def on_timeout(self):
-        return
-    word = TextInput(label = 'Enter your guess', style = TextStyle.short, min_length=5, max_length = 5, required=True, placeholder="Only enter lowercase letters from a-z...")
-    async def on_submit(self, interaction: Interaction):
-        await interaction.response.defer()
-        # * Remember to resolve the input (convert to lowercase)
-        guess = str(self.word).lower()
-        #print(guess) # for debugging
-        # 2. wait for the input, and then compare word with self.secret_word using compare_word() method from compared = game_wordle_handler: {"invalid": invalid, "invalid_type": invalid_type, "comparision": comparision, "won": won}
-        compared = await game_wordle_handler().compare_word(word = guess, secret = self.secret_word)
-        # 3. check if won first, if yes then END THE GAME and edit the original message to the congrat msg with stats, do this by create a class to handle end games first.
-        if compared.get("won", False):
-            await game_wordle_handler().won(interaction, self.tries, self.secret_word, self.tried)
+    class gameplayView(View):
+        def __init__(self, main) -> None:
+            super().__init__(timeout=240)
+            self.main = main
+        async def on_timeout(self):
+            for child in self.children: child.disabled = True
+            await self.main.interaction.edit_original_response(content = "This message is now disabled due to inactivity.", view=None)
+        @button(label='Guess', style=ButtonStyle.green)
+        async def guess(self, interaction: Interaction, button: Button):
+            if self.main.interaction.user.id != interaction.user.id:
+                await interaction.followup.send("This is not your game, you can't make a guess.", ephemeral=True)
+                return
+            await self.main.interaction.send_modal(self.main.guess())
             return
-        # 4. if not won, then check if the input is invalid by fetching the data from compared , if yes, check the invalid_type: "invalid types: 0 - nothing; 1 - not a 5-letter word; 2 - contain non-letter; 3 - not in the dictionary"
-        elif compared.get("invalid", True):
-            if compared["invalid_type"] == 1:
-                error_msg = "Your guess should be a 5-letter word."
-            elif compared["invalid_type"] == 2:
-                error_msg = "Your guess should only contain letters."
-            elif compared["invalid_type"] == 3:
-                error_msg = "Your guess-ed word is not in the dictionary."
-        # and then return the error to the user via followup.msg
-            await interaction.followup.send(error_msg, ephemeral=True)
+        
+    class startView(View):
+        def __init__(self, main) -> None:
+            self.main = main
+        async def on_timeout(self):
             return
-        # 5. if the word is valid and there's a comparision returned via the function, add it to tried, -1 tries and then check if tries == 0 or not
-        self.tries -= 1
-        self.tried.append(compared.get("comparision"))
-        # 5.1: if tries != 0 then pass interaction, tries, secret_word, tried back to main game method to wait for new guesses
-        if self.tries > 0:
-            await game_wordle_handler().maingame(interaction = interaction, tries = self.tries, secret_word = self.secret_word, tried = self.tried)
+        @button(label = 'Start', style = ButtonStyle.green)
+        async def start(self, interaction: Interaction, button: Button):
+            if self.main.interaction.user.id  != interaction.user.id:
+                await interaction.followup.send("This is not your game, you can't start it.", ephemeral=True)
+                return
+            await self.main.gameplay()
+            await interaction.response.defer()
             return
-        # 5.2: if tris == 0 then END THE GAME by editing the original msg and caluclate stat.      
-        else:
-            await game_wordle_handler().lost(interaction, self.tries, self.secret_word, self.tried)
+        @button(label = 'Cancel', style = ButtonStyle.gray)
+        async def cancel(self, interaction: Interaction, button: Button):
+            if self.interaction.user.id != interaction.user.id:
+                await interaction.followup.send("This is not your game, you can't cancel it.", ephemeral=True)
+            for child in self.children: child.disabled = True
             return
-
-class game_wordle_start(View):
-    def __init__(self, interaction: Interaction):
-        super().__init__()
-        self.original_interaction = interaction
-    async def on_timeout(self):
-        return
-        # for child in self.children: child.disabled = True
-        # await self.original_interaction.edit_original_response(content = "This message is now disabled due to inactivity.", view=None)
-    @button(label = 'Start', style = ButtonStyle.green)
-    async def start(self, interaction: Interaction, button: Button):
-        if self.original_interaction.user.id != interaction.user.id:
-            await interaction.followup.send("This is not your game, you can't start it.", ephemeral=True)
-            return
-        handler = game_wordle_handler()
-        await handler.maingame(interaction = self.original_interaction)
-        await interaction.response.defer()
-        return
-    @button(label = 'Cancel', style = ButtonStyle.gray)
-    async def cancel(self, interaction: Interaction, button: Button):
-        if self.original_interaction.user.id != interaction.user.id:
-            await interaction.followup.send("This is not your game, you can't cancel it.", ephemeral=True)
-            return
-        for child in self.children: child.disabled = True
-        await self.original_interaction.edit_original_response(view=self)
-        await interaction.response.defer()
-        return
 
 class game(Group):
     async def is_authorized(self, interaction: Interaction):
@@ -462,7 +473,8 @@ class game(Group):
     async def wordle(self, interaction: Interaction, silent: bool = False):
         await interaction.response.defer(ephemeral=silent)
         if not await self.is_authorized(interaction): return
-        view = game_wordle_start(interaction)
+        instance = game_wordle(interaction)
+        view = instance.start()
         await interaction.followup.send(embed=Embed(title='Wordle', description='- Guess the Wordle in 6 tries.\n- Each guess must be a valid 5-letter word.\n- The letter indicators will change to show how close your guess was to the word. Examples:\n```[W]EARY\nW is in the word and in the correct spot.\nP<I>LLS\nI is in the word but in the wrong spot.```')\
                                         .set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), view=view, ephemeral=silent)
 
@@ -588,17 +600,9 @@ on_ready()
 """
 @client.event
 async def on_ready():
-    global global_ratelimit
-    global maintenance_status
-    global unix_uptime
-    unix_uptime = round(time())
-    global_ratelimit = 0
-    maintenance_status = configurations.default_maintenance_status
+    ilog("Bot is ready. Getting informations...", 'init', 'info')
     await client.change_presence(activity=Game('starting...'), status=Status.idle)
     await asyncio.sleep(2)
-    ilog("Syncing commands to the main guild...", 'init', 'info')
-    await tree.sync(guild = Object(id=configurations.owner_guild_id))
-    ilog("Done! bot is now ready!", 'init', 'info')
     ilog(f"Bot is currently on version {configurations.bot_version}", 'init', 'info')
     ilog(str(client.user) + ' has connected to Discord.', 'init', 'info')
     guilds_num = len(client.guilds)
