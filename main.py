@@ -343,7 +343,7 @@ class game_wordle_handler():
         
     async def lost(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
         embed = Embed(title="Wordle")
-        embed.description = f"You lost!\nThe secret word was: {secret_word}\nYour guesses: ```\n" + "\n".join(tried) + "```"
+        embed.description = f"You lost!\nThe secret word was: `{secret_word}`\nYour guesses: ```\n" + "\n".join(tried) + "```"
         embed.add_field(name = "*Analysis*", value = f"*<coming soon, with word difficulty, guess efficiency >*")
         embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         await interaction.edit_original_response(embed = embed, view = None)
@@ -364,7 +364,6 @@ class game_wordle_gameplay(View):
         # 1. Take user guess by sending a discord.ui.Modal and TextInput to the user
         await interaction.response.send_modal(game_wordle_guess(interaction=self.original_interaction, tries = self.tries, secret_word = self.secret_word, tried = self.tried))
         return
-
 
 class game_wordle_guess(Modal, title = 'Guess your Wordle'):
     def __init__(self, interaction: Interaction, tries: int, secret_word: str, tried: list):
@@ -411,8 +410,6 @@ class game_wordle_guess(Modal, title = 'Guess your Wordle'):
             await game_wordle_handler().lost(interaction, self.tries, self.secret_word, self.tried)
             return
 
-
-
 class game_wordle_start(View):
     def __init__(self, interaction: Interaction):
         super().__init__()
@@ -437,7 +434,6 @@ class game_wordle_start(View):
         await self.on_timeout()
         await interaction.response.defer()
         return
-
 
 class game(Group):
     async def is_authorized(self, interaction: Interaction):
