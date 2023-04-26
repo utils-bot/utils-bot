@@ -392,7 +392,7 @@ class game_wordle():
             guess = str(self.word).lower()
             compared = await self.main.compare_word(guess, self.main.secret_word)
             if compared.get("won", False):
-                # TODO: make won function
+                await self.main.won() # END GAME
                 return
             elif compared.get("invalid", True):
                 if compared["invalid_type"] == 1:
@@ -409,7 +409,7 @@ class game_wordle():
                 await self.main.gameplay() # back to gameplay
                 return
             else:
-                # TODO: lost function
+                await self.main.lost() # END GAME
                 return
 
     class gameplayView(View):
