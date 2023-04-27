@@ -302,6 +302,7 @@ FEATURE COMMANDS (beta)
 
 
 class game_wordle():
+    "This class is used for the command /game wordle; the only method should be used is self.start() -> return the View"
     def __init__(ego, interaction: Interaction) -> None:
         ego.interaction = interaction
         ego.tries = 6
@@ -370,7 +371,7 @@ class game_wordle():
         return ego.guessModal(ego)
     async def won(ego) -> None:
         embed = Embed(title="Wordle")
-        embed.description = f"**You won in {ego.tries} tries!** :heart:\nThe secret word was: {ego.secret_word}\nYour guesses: ```\n" + "\n".join(ego.tried) + "```"
+        embed.description = f"**You won with {ego.tries} tries left!** :heart:\nThe secret word was: {ego.secret_word}\nYour guesses: ```\n" + "\n".join(ego.tried) + "```"
         embed.add_field(name = "*Analysis*", value = f"*<coming soon, with word difficulty, guess efficiency>*")
         embed.set_footer(text = f'Requested by {ego.interaction.user.name}#{ego.interaction.user.discriminator}', icon_url=ego.interaction.user.avatar)
         await ego.interaction.edit_original_response(embed = embed, view = None)
