@@ -345,7 +345,7 @@ class game_wordle():
                     secret[i] = "_"
             #print(f"word: {word}, temp: {temp}, secret: {secret}") # debugging
             for i in range(5):
-                if word[i] in secret:
+                if word[i] in secret and temp[i] == word[i]: # in case the letter is already checked
                     temp[i] = f"<{word[i]}>"
                     secret[secret.index(word[i])] = "_"
             comparision = "".join(temp)
