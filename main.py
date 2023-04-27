@@ -392,10 +392,7 @@ class game_wordle():
             await interaction.response.defer()
             guess = str(self.word).lower()
             compared = await self.main.compare_word(guess, self.main.secret_word)
-            if compared.get("won", False):
-                await self.main.won() # END GAME
-                return
-            elif compared.get("invalid", True):
+            if compared.get("invalid", True):
                 if compared["invalid_type"] == 1:
                     error_msg = "Your guess should be a 5-letter word."
                 elif compared["invalid_type"] == 2:
@@ -404,8 +401,11 @@ class game_wordle():
                     error_msg = "Your guess-ed word is not in the dictionary."
                 await interaction.folloup.send(error_msg, ephemeral = True)
                 return
-            self.main.tries -=1
+            self.main.tries -= 1
             self.main.tried.append(compared.get("comparision"))
+            if compared.get("won", False):
+                await self.main.won() # END GAME
+                return
             if self.main.tries > 0:
                 await self.main.gameplay() # back to gameplay
                 return
