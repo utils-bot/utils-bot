@@ -387,7 +387,8 @@ class game_wordle():
     async def lost(ego) -> None:
         embed = Embed(title="Wordle")
         embed.description = f"**You lost!** :joy: \nThe secret word was: `{ego.secret_word}`\nYour guesses: ```\n" + "\n".join(ego.tried) + "```"
-        embed.add_field(name = "*Analysis*", value = f"*<coming soon, with word difficulty, guess efficiency>*")
+        underline = '\n'
+        embed.add_field(name = "*Analysis*", value = f"""- *Secret word difficulty*: *<comming soon>*\n- *Guess efficiency*: ```{underline.join(map(lambda x: str(x) + "%", ego.tried_efficiency))}```""")
         embed.set_footer(text = f'Requested by {ego.interaction.user.name}#{ego.interaction.user.discriminator}', icon_url=ego.interaction.user.avatar)
         await ego.interaction.edit_original_response(embed = embed, view = None)
 
