@@ -149,17 +149,21 @@ BASE COMMANDS
 
 @tree.command(name='sync', description='system - sync all commands to all guilds manually')#, guild=Object(id=configurations.owner_guild_id))
 @describe(silent = 'Whether you want the output to be sent to you alone or not')
-async def sync(interaction: Interaction, silent: bool = False):
+async def sync(interaction: Interaction, delay: Range[int, 0, 60] = 30, silent: bool = False):
+    global maintenance_status
     await interaction.response.defer(ephemeral=silent)
     if interaction.user.id not in configurations.owner_ids:
         await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
         return
+    await interaction.followup.send(embed=Embed(title="Syncing job requested", description='A sync job for this bot has been queued. All function of the bot will be disabled to reduce ratelimit.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent)
     await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
+    maintenance_status = True
     # tree.copy_global_to(guild = Object(id = configurations.owner_guild_id))
-    await asyncio.sleep(5)
+    await asyncio.sleep(delay)
     await tree.sync()
     ilog(f'Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}', logtype = 'info', flag = 'tree')
-    await asyncio.sleep(5)
+    maintenance_status = configurations.default_maintenance_status
+    await asyncio.sleep(10)
     await interaction.followup.send(embed=Embed(title="Command tree synced", description='Successfully synced the global command tree to all guilds').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent)
     await client.change_presence(activity=Game('synced. reloading...'), status=Status.dnd)
     await asyncio.sleep(5)
@@ -462,7 +466,7 @@ class game_wordle():
 class game(Group):
     async def is_authorized(self, interaction: Interaction):
         if maintenance_status:
-            await interaction.followup.send(embed = Embed(title='Maintaining', description='Maintenance status is set to True.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
             return False
         i = (await check_user_whitelist(user = interaction.user.id))
         l = (interaction.user.id in configurations.owner_ids)
@@ -495,7 +499,7 @@ tree.add_command(game())
 class net(Group):
     async def is_authorized(self, interaction: Interaction):
         if maintenance_status:
-            await interaction.followup.send(embed = Embed(title='Maintaining', description='Maintenance status is set to True.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
             return False
         i = (await check_user_whitelist(user = interaction.user.id))
         l = (interaction.user.id in configurations.owner_ids)
