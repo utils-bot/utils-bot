@@ -302,13 +302,15 @@ FEATURE COMMANDS (beta)
 
 
 class game_wordle():
-    "This class is used for the command /game wordle; the only method should be used is self.start() -> return the View"
+    "This class is used for the command /game wordle; the only method should be used is .start() -> return the ui.View to the user"
     # TODO: analysis: word difficulty,  word length, word frequency...
     def __init__(ego, interaction: Interaction) -> None:
         ego.interaction = interaction
         ego.tries = 6
         ego.secret_word = None
         ego.tried = []
+        ego.tried_efficiency = []
+
     async def gameplay(ego):
         if ego.secret_word == None: ego.secret_word = (await ego.get_word()).get("word", "smhhh")
         embed = Embed(title="Wordle")
@@ -317,11 +319,13 @@ class game_wordle():
         await ego.interaction.edit_original_response(embed=embed, view=ego.play())
     
     async def compare_word(ego, word: str, secret: str):
+        'response format: {"invalid": invalid, "invalid_type": invalid_type, "comparision": comparision, "efficiency": efficiency, "won": won}'
         "invalid types: 0 - nothing; 2 - contain non-letter; 3 - not in the dictionary"
         invalid = False
         invalid_type = 0
         comparision = ""
         won = False
+        efficiency = 0 # 0 -> 100
         while True:
             if any(letter not in "abcdefghijklmnopqrstuvwxyz" for letter in word): invalid_type = 2; invalid = True; break
             querystring = {"term": word}
@@ -334,7 +338,7 @@ class game_wordle():
                     data = await response.json()
                     if len(data.get("list", [])) == 0: invalid_type = 3; invalid = True; break
             # compare the word (valid) to the secret word:-> NEED TO FIX
-            if word == secret: won = True; break
+            if word == secret: won = True; efficiency = 100; break
             word = list(word)
             temp = list(word)[:]
             secret = list(secret)
@@ -343,14 +347,16 @@ class game_wordle():
                 if word[i] == secret[i]:
                     temp[i] = f"[{word[i]}]"
                     secret[i] = "_"
+                    efficiency += 20
             #print(f"word: {word}, temp: {temp}, secret: {secret}") # debugging
             for i in range(5):
                 if word[i] in secret and temp[i] == word[i]: # in case the letter is already checked
                     temp[i] = f"<{word[i]}>"
                     secret[secret.index(word[i])] = "_"
+                    efficiency += 10
             comparision = "".join(temp)
             break
-        return {"invalid": invalid, "invalid_type": invalid_type, "comparision": comparision, "won": won}
+        return {"invalid": invalid, "invalid_type": invalid_type, "comparision": comparision, "efficiency": efficiency, "won": won}
     
     async def get_word(ego):
         word = None
@@ -373,7 +379,8 @@ class game_wordle():
     async def won(ego) -> None:
         embed = Embed(title="Wordle")
         embed.description = f"**You won with {ego.tries} trie(s) left!** :heart:\nThe secret word was: `{ego.secret_word}`\nYour guesses: ```\n" + "\n".join(ego.tried) + "```"
-        embed.add_field(name = "*Analysis*", value = f"*<coming soon, with word difficulty, guess efficiency>*")
+        underline = "\n"
+        embed.add_field(name = "*Analysis*", value = f"""- *Secret word difficulty*: *<comming soon>*\n- *Guess efficiency*: ```{underline.join(map(lambda x: str(x) + "%", ego.tried_efficiency))}```""")
         embed.set_footer(text = f'Requested by {ego.interaction.user.name}#{ego.interaction.user.discriminator}', icon_url=ego.interaction.user.avatar)
         await ego.interaction.edit_original_response(embed = embed, view = None)
         # GAME ENdED
@@ -404,6 +411,7 @@ class game_wordle():
                 return
             self.main.tries -= 1
             self.main.tried.append(compared.get("comparision"))
+            self.main.tried_efficiency.append(compared.get("efficiency"))
             if compared.get("won", False):
                 await self.main.won() # END GAME
                 return
