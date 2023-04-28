@@ -54,8 +54,8 @@ class MyClient(Client):
         unix_uptime = round(time())
         # do syncs
         ilog("Syncing commands to the main guild...", 'init', 'info')
-        await self.tree.sync(guild = Object(id=configurations.owner_guild_id))
         self.tree.copy_global_to(guild = Object(id=configurations.owner_guild_id))
+        await self.tree.sync(guild = Object(id=configurations.owner_guild_id))
         ilog("Done! Bot will be ready soon", 'init', 'info')
         return
 
@@ -257,8 +257,8 @@ class locsys(Group):
     @command(name='version', description='system - check the code version')
     @describe(silent = 'Whether you want the output to be sent to you alone or not')
     async def version(self, interaction: Interaction, silent: bool = False):
-        if (not configurations.is_replit) or (not configurations.no_git_automation): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on a system that can auto-update itself.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent); return
         await interaction.response.defer(ephemeral=silent)
+        if (not configurations.is_replit) or (not configurations.no_git_automation): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on a system that can auto-update itself.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent); return
         if not await self.is_authorized(interaction): return
         await interaction.followup.send(ephemeral=silent, embed=Embed(title = 'Bot version:', description= f'Bot version {configurations.bot_version} {"[outdated]" if not check_bot_version(configurations.bot_version) else "[up-to-date]"}').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
