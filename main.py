@@ -55,7 +55,7 @@ class MyClient(Client):
         # do syncs
         ilog("Syncing commands to the main guild...", 'init', 'info')
         self.tree.copy_global_to(guild = Object(id=configurations.owner_guild_id))
-        await self.tree.sync(guild = Object(id=configurations.owner_guild_id))
+        # await self.tree.sync(guild = Object(id=configurations.owner_guild_id))
         ilog("Done! Bot will be ready soon", 'init', 'info')
         return
 
