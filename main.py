@@ -13,7 +13,6 @@ from time import time
 from keep_alive import ka
 from io import BytesIO
 from configs import configurations
-# from enum import Enum
 
 discord_logger = logging.getLogger('discord')
 ch = logging.StreamHandler()
@@ -33,12 +32,9 @@ DEFINING VARS
 -------------------------------------------------
 """
 
-    # ipinfo_api_key: str = environ.get('ipinfo_api_key', '')
-    # chromedriver_path = environ.get('chromedriver_path', '/nix/store/i85kwq4r351qb5m7mrkl2grv34689l6b-chromedriver-108.0.5359.71/bin/chromedriver')
 
 intents = Intents.default()
 intents.members = True
-# intents.message_content = True
 class MyClient(Client):
     def __init__(self, *, intents: Intents) -> None:
         super().__init__(intents=intents)
@@ -130,7 +126,6 @@ async def sync(interaction: Interaction, delay: Range[int, 0, 60] = 30, silent: 
     await interaction.followup.send(embed=Embed(title="Syncing job requested", description='A sync job for this bot has been queued. All function of the bot will be disabled to reduce ratelimit.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent)
     await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
     maintenance_status = True
-    # tree.copy_global_to(guild = Object(id = configurations.owner_guild_id))
     await asyncio.sleep(delay)
     await tree.sync()
     ilog(f'Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}', logtype = 'info', flag = 'tree')
@@ -319,13 +314,11 @@ class game_wordle():
             word = list(word)
             temp = list(word)[:]
             secret = list(secret)
-            #print(f"word: {word}, temp: {temp}, secret: {secret}") # debugging
             for i in range(5):
                 if word[i] == secret[i]:
                     temp[i] = f"[{word[i]}]"
                     secret[i] = "_"
                     efficiency += 20
-            #print(f"word: {word}, temp: {temp}, secret: {secret}") # debugging
             for i in range(5):
                 if word[i] in secret and temp[i] == word[i]: # in case the letter is already checked
                     temp[i] = f"<{word[i]}>"
@@ -565,7 +558,6 @@ class net(Group):
             return
         ipdata = await self.get_ip_info(ipv4)
         embed = Embed(title=f"IP information", description= f"Here's the information for `{ipv4}`:")
-        # embed.add_field(name, ipdata[val])
         fieldlist = [
             ("IP", ipdata.get("ip", None)),
             ("Data Center", ipdata.get("data_center", None)),
@@ -600,13 +592,6 @@ FEATURE COMMANDS (official)
 /uptime
 """
 
-# @tree.command(name='echo', description='removing soon - Echo the provided string to the user')
-# @describe(string='String to echo')
-# async def echo(interaction: Interaction, string: str, ephemeral: bool = True):
-#     if interaction.user.id not in configurations.owner_ids:
-#         ephemeral = True
-#     await interaction.response.defer(ephemeral=ephemeral)
-#     await interaction.followup.send(string, ephemeral=ephemeral)
 
 @tree.command(name='uptime', description='Returns the bot uptime.')
 async def uptime(interaction: Interaction):
