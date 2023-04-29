@@ -289,7 +289,7 @@ class game_wordle():
         ego.tried_efficiency = []
 
     async def gameplay(ego):
-        if ego.secret_word == None: ego.secret_word = (await ego.get_word()).get("word", "smhhh")
+        if ego.secret_word is None: ego.secret_word = (await ego.get_word()).get("word", "smhhh")
         embed = Embed(title="Wordle")
         embed.description = "Make a guess by click the green guess button below!\n`Your guesses:` ```\n" + "\n".join(ego.tried) + "```"
         embed.set_footer(text = f'Requested by {ego.interaction.user.name}#{ego.interaction.user.discriminator}', icon_url=ego.interaction.user.avatar)
@@ -579,7 +579,7 @@ class net(Group):
             ("AS Organization", f'{ipdata["network"].get("as_org", "_")} | {ipdata["network"].get("as_org_alt", "?")}')
         ]
         for field_name, field_value in fieldlist:
-            if field_value == None: continue
+            if field_value is None: continue
             embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=False)
         embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         await interaction.followup.send(embed = embed, ephemeral=silent)
