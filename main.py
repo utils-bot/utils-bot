@@ -66,33 +66,6 @@ async def antiblock(blocking_func: typing.Callable, *args, **kwargs) -> typing.A
     func = functools.partial(blocking_func, *args, **kwargs)
     return await client.loop.run_in_executor(None, func)
 
-async def get_screenshot(url, resolution, delay, debugmsg: Webhook, api_url=configurations.screenshotapi, token=configurations.screenshotsecret):
-    success = True
-    error: str = ""
-    params = {'resolution': resolution, 'delay': delay} #, 'authorization': token}
-    headers = {'url': url, 'authorization': token}
-    debugem = Embed(title="Processing your request...")
-    debugem.description = "[...] Validating data\n[] Connect to the API\n[] Fetch image\n[] Return image"
-    await debugmsg.edit(embed = debugem)
-    debugem.description = "[OK] Validate data\n[...] Waiting API to finish\n[] Fetch image\n[] Return image"
-    await debugmsg.edit(embed = debugem)
-    async with ClientSession() as session:
-        async with session.get(api_url, params=params, headers=headers) as response:
-            try:
-                response.raise_for_status()
-                debugem.description = "[OK] Validate data\n[OK] Connect to the API\n[...] Fetching image\n[] Return image"
-                await debugmsg.edit(embed = debugem)
-                image_data = await response.read()
-                api_elapsed = response.headers.get("X-Elapsed-Time")
-            except Exception as e:
-                success = False
-                image_data = None
-                api_elapsed = 0
-                error = e
-    debugem.description = "[OK] Validate data\n[OK] Connect to the API\n[OK] Fetch image\n[...] Returning image"
-    await debugmsg.edit(embed = debugem)
-    return {"success": success, "image_data": image_data, "error": error, "api_elapsed": api_elapsed}
-
 async def get_redirect_history_aiohttp(url: str):
     return
 
@@ -146,7 +119,6 @@ BASE COMMANDS
 |-- restart
 |-- maintenance
 -------------------------------------------------""" 
-
 @tree.command(name='sync', description='system - sync all commands to all guilds manually')#, guild=Object(id=configurations.owner_guild_id))
 @describe(silent = 'Whether you want the output to be sent to you alone or not')
 async def sync(interaction: Interaction, delay: Range[int, 0, 60] = 30, silent: bool = False):
@@ -297,13 +269,14 @@ tree.add_command(sys())
 """
 -------------------------------------------------
 FEATURE COMMANDS (beta)
-/screenshot
-/rps
+/game
+    |-- wordle
+/net
+    |-- screenshot
+    |-- ip
+    |-- deshorten
 -------------------------------------------------
 """
-
-
-
 
 class game_wordle():
     "This class is used for the command /game wordle; the only method should be used is .start() -> return the ui.View to the user"
@@ -522,6 +495,33 @@ class net(Group):
             async with session.get(f'https://api.iprisk.info/v1/{ip}') as response:
                 data = await response.json()
             return data
+    async def get_screenshot(self, url, resolution, delay, debugmsg: Webhook, api_url=configurations.screenshotapi, token=configurations.screenshotsecret):
+        success = True
+        error: str = ""
+        params = {'resolution': resolution, 'delay': delay} #, 'authorization': token}
+        headers = {'url': url, 'authorization': token}
+        debugem = Embed(title="Processing your request...")
+        debugem.description = "[...] Validating data\n[] Connect to the API\n[] Fetch image\n[] Return image"
+        await debugmsg.edit(embed = debugem)
+        debugem.description = "[OK] Validate data\n[...] Waiting API to finish\n[] Fetch image\n[] Return image"
+        await debugmsg.edit(embed = debugem)
+        async with ClientSession() as session:
+            async with session.get(api_url, params=params, headers=headers) as response:
+                try:
+                    response.raise_for_status()
+                    debugem.description = "[OK] Validate data\n[OK] Connect to the API\n[...] Fetching image\n[] Return image"
+                    await debugmsg.edit(embed = debugem)
+                    image_data = await response.read()
+                    api_elapsed = response.headers.get("X-Elapsed-Time")
+                except Exception as e:
+                    success = False
+                    image_data = None
+                    api_elapsed = 0
+                    error = e
+        debugem.description = "[OK] Validate data\n[OK] Connect to the API\n[OK] Fetch image\n[...] Returning image"
+        await debugmsg.edit(embed = debugem)
+        return {"success": success, "image_data": image_data, "error": error, "api_elapsed": api_elapsed}
+    
     @command(name='screenshot', description='BETA - Take a screenshot of a website')
     @describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s) (default: 0)', resolution = 'Resolution of the driver window (Default: 720p)', silent = 'Whether you want the output to be sent to you alone or not')
     @choices(resolution = [Choice(value=i, name=k) for i, k in [(240, '240p - Minimum'), (360, '360p - Website'), (480, '480p - Standard'), (720, '720p - HD'), (1080, '1080p - Full HD'), (1440, '1440p - 2K'), (2160, '2160p - 4K')]]) # , ('undetected_selenium', 'Selenium + Undetected Chromium (for bypassing)') # engine = [Choice(value=i, name=k) for i, k in [('selenium', 'Selenium + Chromium'), ('playwright', 'Playwright + Chromium')]]
@@ -543,7 +543,7 @@ class net(Group):
         await asyncio.sleep(1)
         global_ratelimit += 1 # get_screenshot_undetected_chromedriver
         els = time()
-        data = await get_screenshot(url=url, resolution=resolution, delay=delay, debugmsg=msg)
+        data = await self.get_screenshot(url=url, resolution=resolution, delay=delay, debugmsg=msg)
         global_ratelimit += -1
         global_elapsed = round(1000*(time() - els))
         await msg.edit(embed=Embed(title="Finished", description="Your request has been processed.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
@@ -553,8 +553,7 @@ class net(Group):
             embed.set_image(url='attachment://screenshot.png')
             await interaction.followup.send(ephemeral = silent, embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
         else:
-            await interaction.followup.send(ephemeral = silent, embed=Embed(title='Error', description=f'Failed to get the screenshot from the API, ask developers for more details... [API error?]').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
-            
+            await interaction.followup.send(ephemeral = silent, embed=Embed(title='Error', description=f'Failed to get the screenshot from the API, ask developers for more details... [API error?]').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))   
     @command(name = 'ip', description='Use APIs to fetch information about a IPv4 address.')
     @describe(ipv4 = "The IPv4 address you want to fetch.", silent = 'Whether you want the output to be sent to you alone or not')
     # @choices(ipv4 = [Choice(value = i) for i in [f"{x}.{y}.{z}.{t}" for x in range(0, 255) for y in range(0, 255) for z in range(0, 255) for t in range(0, 255)]])
@@ -584,6 +583,13 @@ class net(Group):
             embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=False)
         embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         await interaction.followup.send(embed = embed, ephemeral=silent)
+    #@command(name = 'deshorten', description='Capture redirects from a URL and return the final URL.')
+    #@describe(url = "The URL you want to deshorten.", silent = 'Whether you want the output to be sent to you alone or not')
+    #async def deshorten(self, interaction: Interaction, url: str, silent: bool = False):
+    #    await interaction.response.defer(ephemeral=silent)
+    #    if not await self.is_authorized(interaction): return
+    #    # later
+    #    pass
 
 tree.add_command(net())
 """
