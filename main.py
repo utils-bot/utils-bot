@@ -50,9 +50,10 @@ class MyClient(Client):
         unix_uptime = round(time())
         # do syncs
         ilog("Syncing commands to the main guild...", 'init', 'info')
-        self.tree.copy_global_to(guild = Object(id=configurations.owner_guild_id))
-        # await self.tree.sync(guild = Object(id=configurations.owner_guild_id))
+        # self.tree.copy_global_to(guild = Object(id=configurations.owner_guild_id))
+        await self.tree.sync(guild = Object(id=configurations.owner_guild_id))
         ilog("Done! Bot will be ready soon", 'init', 'info')
+        await asyncio.sleep(3)
         return
 
 client = MyClient(intents=intents)
@@ -123,7 +124,7 @@ async def sync(interaction: Interaction, delay: Range[int, 0, 60] = 30, silent: 
     if interaction.user.id not in configurations.owner_ids:
         await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
         return
-    await interaction.followup.send(embed=Embed(title="Syncing job requested", description='A sync job for this bot has been queued. All function of the bot will be disabled to reduce ratelimit.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent)
+    await interaction.followup.send(embed=Embed(title="Syncing job requested", description='A sync job for this bot has been queued. All functions of the bot will be disabled to prevent ratelimit.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent)
     await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
     maintenance_status = True
     await asyncio.sleep(delay)
