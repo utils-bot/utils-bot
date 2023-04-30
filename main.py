@@ -5,7 +5,7 @@ from discord import Intents, Client, Interaction, Object, Embed, File, Game, Sta
 from discord.app_commands import CommandTree, Group, command, Choice, choices, describe, Range
 from discord.ui import button, View, Modal, Button, TextInput
 from jsondb import check_bot_version, get_user_whitelist, update_user_whitelist, check_user_whitelist
-import logging, json, typing, functools, traceback, asyncio, json
+import logging, json, typing, functools, traceback, asyncio, json, sentry_sdk
 from aiohttp import ClientSession
 from logger import CustomFormatter, ilog
 from os import system
@@ -488,31 +488,69 @@ class net(Group):
             async with session.get(f'https://api.iprisk.info/v1/{ip}') as response:
                 data = await response.json()
             return data
+    async def get_unshortened(self, url, debugmsg, api_url=configurations.unshortenapi, token=configurations.unshortensecret):
+        'response example: {"success": success, "redirect_list": redirect_list, "error": error, "api_elapsed": api_elapsed}'
+        success = True
+        redirect_list = []
+        error = ""
+        api_elapsed = 0
+        headers = {'url': url, 'authorization': token}
+        while True:
+            debugem = Embed(title="Processing your request...").description = "[...] Validating data\n[] Connect to the API\n[] Fetch redirect list\n[] Return redirect list"
+            await debugmsg.edit(embed = debugem)
+            debugem.description = "[OK] Validate data\n[...] Waiting API to finish\n[] Fetch redirect list\n[] Return redirect list"
+            await debugmsg.edit(embed = debugem)
+            async with ClientSession() as session:
+                async with session.get(api_url, headers=headers) as response:
+                    try:
+                        response.raise_for_status()
+                        'data example: Response({"redirects": redirect_list}, headers={"X-Elapsed-Time": str(elapsed)})'
+                        data = await response.json()
+                        debugem.description = "[OK] Validate data\n[OK] Connect to the API\n[...] Fetch redirect list\n[] Return redirect list"
+                        await debugmsg.edit(embed = debugem)
+                        redirect_list = data.get('redirects', ['unspecified error'])
+                        api_elapsed = response.headers.get('X-Elapsed-Time', 'unspecified error')
+                    except Exception as e:
+                        success = False
+                        error = str(e)
+                        debugem.description = "ERROR"
+                        await asyncio.sleep(1)
+                        await debugmsg.edit(embed = debugem)
+                        break
+            debugem.description = "[OK] Validate data\n[OK] Connect to the API\n[OK] Fetch redirect list\n[...] Returning redirect list"
+            await debugmsg.edit(embed = debugem)
+            break
+        return {"success": success, "redirect_list": redirect_list, "error": error, "api_elapsed": api_elapsed}
+
     async def get_screenshot(self, url, resolution, delay, debugmsg: Webhook, api_url=configurations.screenshotapi, token=configurations.screenshotsecret):
+        'response example: {"success": success, "image_data": image_data, "error": error, "api_elapsed": api_elapsed}'
         success = True
         error: str = ""
+        image_data = None
+        api_elapsed = 0
         params = {'resolution': resolution, 'delay': delay} #, 'authorization': token}
         headers = {'url': url, 'authorization': token}
-        debugem = Embed(title="Processing your request...")
-        debugem.description = "[...] Validating data\n[] Connect to the API\n[] Fetch image\n[] Return image"
-        await debugmsg.edit(embed = debugem)
-        debugem.description = "[OK] Validate data\n[...] Waiting API to finish\n[] Fetch image\n[] Return image"
-        await debugmsg.edit(embed = debugem)
-        async with ClientSession() as session:
-            async with session.get(api_url, params=params, headers=headers) as response:
-                try:
-                    response.raise_for_status()
-                    debugem.description = "[OK] Validate data\n[OK] Connect to the API\n[...] Fetching image\n[] Return image"
-                    await debugmsg.edit(embed = debugem)
-                    image_data = await response.read()
-                    api_elapsed = response.headers.get("X-Elapsed-Time")
-                except Exception as e:
-                    success = False
-                    image_data = None
-                    api_elapsed = 0
-                    error = e
-        debugem.description = "[OK] Validate data\n[OK] Connect to the API\n[OK] Fetch image\n[...] Returning image"
-        await debugmsg.edit(embed = debugem)
+        while True:
+            debugem = Embed(title="Processing your request...")
+            debugem.description = "[...] Validating data\n[] Connect to the API\n[] Fetch image\n[] Return image"
+            await debugmsg.edit(embed = debugem)
+            debugem.description = "[OK] Validate data\n[...] Waiting API to finish\n[] Fetch image\n[] Return image"
+            await debugmsg.edit(embed = debugem)
+            async with ClientSession() as session:
+                async with session.get(api_url, params=params, headers=headers) as response:
+                    try:
+                        response.raise_for_status()
+                        debugem.description = "[OK] Validate data\n[OK] Connect to the API\n[...] Fetching image\n[] Return image"
+                        await debugmsg.edit(embed = debugem)
+                        image_data = await response.read()
+                        api_elapsed = response.headers.get("X-Elapsed-Time")
+                    except Exception as e:
+                        success = False
+                        error = e
+                        break
+            debugem.description = "[OK] Validate data\n[OK] Connect to the API\n[OK] Fetch image\n[...] Returning image"
+            await debugmsg.edit(embed = debugem)
+            break
         return {"success": success, "image_data": image_data, "error": error, "api_elapsed": api_elapsed}
     
     @command(name='screenshot', description='BETA - Take a screenshot of a website')
@@ -575,13 +613,32 @@ class net(Group):
             embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=False)
         embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         await interaction.followup.send(embed = embed, ephemeral=silent)
-    #@command(name = 'deshorten', description='Capture redirects from a URL and return the final URL.')
-    #@describe(url = "The URL you want to deshorten.", silent = 'Whether you want the output to be sent to you alone or not')
-    #async def deshorten(self, interaction: Interaction, url: str, silent: bool = False):
-    #    await interaction.response.defer(ephemeral=silent)
-    #    if not await self.is_authorized(interaction): return
-    #    # later
-    #    pass
+    @command(name = 'unshort_url', description='Capture redirects from a URL and return the final URL.')
+    @describe(url = "The URL you want to unshorten.", silent = 'Whether you want the output to be sent to you alone or not')
+    async def unshorten_url(self, interaction: Interaction, url: str, silent: bool = False):
+        await interaction.response.defer(ephemeral=silent)
+        if not await self.is_authorized(interaction): return
+        if not url.startswith('http'):
+            await interaction.followup.send(embed=Embed(title='Error', description='Please provide a valid URL, including http or https.', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = silent)
+            return
+        if any(url.startswith(i) for i in [x + y for x in ['http://', 'https://'] for y in ['0.0.0.0', '127.0.0.1', 'localhost']]):
+            await interaction.followup.send(embed=Embed(title='Error', description='Please do not try to access localhost.', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = silent)
+            return
+        msg = await interaction.followup.send(embed=Embed(title = 'Processing your request...'), ephemeral=True)
+        await asyncio.sleep(1)
+        global_ratelimit += 1
+        els = time()
+        data = await self.get_unshortened_url(url, msg)
+        global_ratelimit += -1
+        global_elapsed = round(1000*(time() - els))
+        await msg.edit(embed=Embed(title="Finished", description="Your request has been processed.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+        if data["success"]:
+            redirects = data.get("redirect_list", [])
+            embed = Embed(title='Success',description=f'Here is the list of of redirects got from {url} \n||*(took {global_elapsed}ms globally, {data["api_elapsed"]}ms for the API to work, elapsed times including requested delays)*||', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
+            embed.add_field(name = 'Redirects', value = '\n'.join([f'` -> {i}`' for i in redirects]) if redirects else 'No redirects found.')
+            await interaction.followup.send(ephemeral = silent, embed=embed)
+        else:
+            await interaction.followup.send(ephemeral = silent, embed=Embed(title='Error', description=f'Failed to get redirects from the URL, ask developers for more details... [API error?]').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))   
 
 tree.add_command(net())
 """
@@ -626,6 +683,9 @@ BOOT
 """
 def run():
     # some checks before run, soonTM
+    if configurations.using_sentry:
+        ilog('Initializing Sentry...', 'init', 'info')
+        sentry_sdk.init(dsn=configurations.sentry_dsn, traces_sample_rate=1.0)
     if configurations.is_replit:
         ilog('Starting flask keep-alive server...', 'init', 'info')
         ka()
