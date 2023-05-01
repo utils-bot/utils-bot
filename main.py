@@ -235,8 +235,7 @@ class sys(Group):
             await interaction.followup.send(ephemeral= True, embed=Embed(title="Exception occurred", description=str(e), ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
 class locsys(Group):
-    @staticmethod
-    async def is_authorized(interaction: Interaction):
+    async def is_authorized(self, interaction: Interaction):
         i = interaction.user.id in configurations.owner_ids
         if not i:
             await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
@@ -461,8 +460,7 @@ class game_wordle():
             return
 
 class game(Group):
-    @staticmethod
-    async def is_authorized(interaction: Interaction):
+    async def is_authorized(self, interaction: Interaction):
         if maintenance_status:
             await interaction.followup.send(embed = Embed(title='Maintaining', description='Maintenance status is set to True.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
             return False
@@ -495,8 +493,7 @@ class game(Group):
 tree.add_command(game())
 
 class net(Group):
-    @staticmethod
-    async def is_authorized(interaction: Interaction):
+    async def is_authorized(self, interaction: Interaction):
         if maintenance_status:
             await interaction.followup.send(embed = Embed(title='Maintaining', description='Maintenance status is set to True.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
             return False
