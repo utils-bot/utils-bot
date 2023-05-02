@@ -610,9 +610,9 @@ class net(Group):
             ("City", ipdata.get("geo", {}).get("city", None)),
             ("Region", f'{ipdata.get("geo", {}).get("region", "_")} | {ipdata.get("geo", {}).get("region_code", "_")}'),
             ("\u200B", "\n"),  # blank field separator
-            ("Network Route", ipdata["network"].get("route", None)),
-            ("AS Number", ipdata["network"].get("as_number", None)),
-            ("AS Organization", f'{ipdata["network"].get("as_org", "_")} | {ipdata["network"].get("as_org_alt", "?")}')
+            ("Network Route", ipdata.get("network", {}).get("route", None)),
+            ("AS Number", ipdata.get("network", {}).get("as_number", None)),
+            ("AS Organization", f'{ipdata.get("network", {}).get("as_org", "_")} | {ipdata.get("network", {}).get("as_org_alt", "?")}')
         ]
         for field_name, field_value in fieldlist:
             if field_value is None: continue
