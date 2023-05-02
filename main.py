@@ -435,7 +435,8 @@ class game_wordle():
             return
 
 class game(Group):
-    async def is_authorized(self, interaction: Interaction):
+    @staticmethod
+    async def is_authorized(interaction: Interaction):
         if maintenance_status:
             await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
             return False
@@ -489,12 +490,14 @@ class net(Group):
             await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
             return False
         return True
-    async def get_ip_info(self, ip) -> dict:
+    @staticmethod
+    async def get_ip_info(ip) -> dict:
         async with ClientSession() as session:
             async with session.get(f'https://api.iprisk.info/v1/{ip}') as response:
                 data = await response.json()
             return data
-    async def get_unshortened(self, url, debugmsg, api_url=configurations.unshortenapi, token=configurations.unshortensecret):
+    @staticmethod
+    async def get_unshortened(url, debugmsg, api_url=configurations.unshortenapi, token=configurations.unshortensecret):
         'response example: {"success": success, "redirect_list": redirect_list, "error": error, "api_elapsed": api_elapsed}'
         success = True
         redirect_list = []
@@ -528,7 +531,8 @@ class net(Group):
             break
         return {"success": success, "redirect_list": redirect_list, "error": error, "api_elapsed": api_elapsed}
 
-    async def get_screenshot(self, url, resolution, delay, debugmsg: Webhook, api_url=configurations.screenshotapi, token=configurations.screenshotsecret):
+    @staticmethod
+    async def get_screenshot(url, resolution, delay, debugmsg: Webhook, api_url=configurations.screenshotapi, token=configurations.screenshotsecret):
         'response example: {"success": success, "image_data": image_data, "error": error, "api_elapsed": api_elapsed}'
         success = True
         error: str = ""
