@@ -605,10 +605,10 @@ class net(Group):
         fieldlist = [
             ("IP", ipdata.get("ip", None)),
             ("Data Center", ipdata.get("data_center", None)),
-            ("Continent", f'{ipdata["geo"].get("continent", "_")} | {ipdata["geo"].get("continent_code", "_")}'),
-            ("Country", f'{ipdata["geo"].get("country", "_")} | {ipdata["geo"].get("country_code", "_")} {ipdata["geo"].get("country_flag_emoji", "?")}'),
-            ("City", ipdata["geo"].get("city", None)),
-            ("Region", f'{ipdata["geo"].get("region", "_")} | {ipdata["geo"].get("region_code", "_")}'),
+            ("Continent", f'{ipdata.get("geo", {}).get("continent", "_")} | {ipdata.get("geo", {}).get("continent_code", "_")}'),
+            ("Country", f'{ipdata.get("geo", {}).get("country", "_")} | {ipdata.get("geo", {}).get("country_code", "_")} {ipdata.get("geo", {}).get("country_flag_emoji", "?")}'),
+            ("City", ipdata.get("geo", {}).get("city", None)),
+            ("Region", f'{ipdata.get("geo", {}).get("region", "_")} | {ipdata.get("geo", {}).get("region_code", "_")}'),
             ("\u200B", "\n"),  # blank field separator
             ("Network Route", ipdata["network"].get("route", None)),
             ("AS Number", ipdata["network"].get("as_number", None)),
