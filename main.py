@@ -621,9 +621,9 @@ class net(Group):
                 ("AS Number", ipdata.get("network", {}).get("as_number", None)),
                 ("AS Organization", f'{ipdata.get("network", {}).get("as_org", "_")} | {ipdata.get("network", {}).get("as_org_alt", "?")}')
             ]
-            for field_name, field_value in fieldlist:
-                if field_value is None: continue
-                embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=False)
+        for field_name, field_value in fieldlist:
+            if field_value is None: continue
+            embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=False)
         embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         await interaction.followup.send(embed = embed, ephemeral=silent)
     @command(name = 'unshort_url', description='Capture redirects from a URL and return the final URL.')
