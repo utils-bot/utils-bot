@@ -602,21 +602,28 @@ class net(Group):
             return
         ipdata = await self.get_ip_info(ipv4)
         embed = Embed(title=f"IP information", description= f"Here's the information for `{ipv4}`:")
-        fieldlist = [
-            ("IP", ipdata.get("ip", None)),
-            ("Data Center", ipdata.get("data_center", None)),
-            ("Continent", f'{ipdata.get("geo", {}).get("continent", "_")} | {ipdata.get("geo", {}).get("continent_code", "_")}'),
-            ("Country", f'{ipdata.get("geo", {}).get("country", "_")} | {ipdata.get("geo", {}).get("country_code", "_")} {ipdata.get("geo", {}).get("country_flag_emoji", "?")}'),
-            ("City", ipdata.get("geo", {}).get("city", None)),
-            ("Region", f'{ipdata.get("geo", {}).get("region", "_")} | {ipdata.get("geo", {}).get("region_code", "_")}'),
-            ("\u200B", "\n"),  # blank field separator
-            ("Network Route", ipdata.get("network", {}).get("route", None)),
-            ("AS Number", ipdata.get("network", {}).get("as_number", None)),
-            ("AS Organization", f'{ipdata.get("network", {}).get("as_org", "_")} | {ipdata.get("network", {}).get("as_org_alt", "?")}')
-        ]
-        for field_name, field_value in fieldlist:
-            if field_value is None: continue
-            embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=False)
+        if "error" in ipdata:
+            err = ipdata.get("error")
+            fieldlist = [
+                ("Error", err.get("message", None)),
+                ("Status", err.get("status", None)),
+            ]
+        else:
+            fieldlist = [
+                ("IP", ipdata.get("ip", None)),
+                ("Data Center", ipdata.get("data_center", None)),
+                ("Continent", f'{ipdata.get("geo", {}).get("continent", "_")} | {ipdata.get("geo", {}).get("continent_code", "_")}'),
+                ("Country", f'{ipdata.get("geo", {}).get("country", "_")} | {ipdata.get("geo", {}).get("country_code", "_")} {ipdata.get("geo", {}).get("country_flag_emoji", "?")}'),
+                ("City", ipdata.get("geo", {}).get("city", None)),
+                ("Region", f'{ipdata.get("geo", {}).get("region", "_")} | {ipdata.get("geo", {}).get("region_code", "_")}'),
+                ("\u200B", "\n"),  # blank field separator
+                ("Network Route", ipdata.get("network", {}).get("route", None)),
+                ("AS Number", ipdata.get("network", {}).get("as_number", None)),
+                ("AS Organization", f'{ipdata.get("network", {}).get("as_org", "_")} | {ipdata.get("network", {}).get("as_org_alt", "?")}')
+            ]
+            for field_name, field_value in fieldlist:
+                if field_value is None: continue
+                embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=False)
         embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
         await interaction.followup.send(embed = embed, ephemeral=silent)
     @command(name = 'unshort_url', description='Capture redirects from a URL and return the final URL.')
