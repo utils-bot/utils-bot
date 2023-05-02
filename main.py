@@ -138,7 +138,8 @@ async def sync(interaction: Interaction, delay: Range[int, 0, 60] = 30, silent: 
     await client.change_presence(activity=Game('version ' + configurations.bot_version + ' [outdated]' if not check_bot_version(configurations.bot_version) else ""), status=Status.online)
 
 class sys(Group):
-    async def is_authorized(self, interaction: Interaction):
+    @staticmethod
+    async def is_authorized(interaction: Interaction):
         i = interaction.user.id in configurations.owner_ids
         if not i:
             await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
@@ -207,7 +208,8 @@ class sys(Group):
             await interaction.followup.send(ephemeral= True, embed=Embed(title="Exception occurred", description=str(e), ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
 
 class locsys(Group):
-    async def is_authorized(self, interaction: Interaction):
+    @staticmethod
+    async def is_authorized(interaction: Interaction):
         i = interaction.user.id in configurations.owner_ids
         if not i:
             await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
@@ -291,7 +293,8 @@ class game_wordle():
         embed.set_footer(text = f'Requested by {ego.interaction.user.name}#{ego.interaction.user.discriminator}', icon_url=ego.interaction.user.avatar)
         await ego.interaction.edit_original_response(embed=embed, view=ego.play())
     
-    async def compare_word(ego, word: str, secret: str):
+    @staticmethod
+    async def compare_word(word: str, secret: str):
         'response format: {"invalid": invalid, "invalid_type": invalid_type, "comparision": comparision, "efficiency": efficiency, "won": won}'
         "invalid types: 0 - nothing; 2 - contain non-letter; 3 - not in the dictionary"
         invalid = False
@@ -329,7 +332,8 @@ class game_wordle():
             break
         return {"invalid": invalid, "invalid_type": invalid_type, "comparision": comparision, "efficiency": efficiency, "won": won}
     
-    async def get_word(ego):
+    @staticmethod
+    async def get_word():
         word = None
         success = True
         async with ClientSession() as session:
@@ -464,7 +468,8 @@ class game(Group):
 tree.add_command(game())
 
 class net(Group):
-    async def is_authorized(self, interaction: Interaction):
+    @staticmethod
+    async def is_authorized(interaction: Interaction):
         if maintenance_status:
             await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
             return False
