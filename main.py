@@ -516,7 +516,7 @@ class net(Group):
                         debugem.description = "[OK] Validate data\n[OK] Connect to the API\n[...] Fetch redirect list\n[] Return redirect list"
                         await debugmsg.edit(embed = debugem)
                         redirect_list = data.get('redirects', ['unspecified error'])
-                        api_elapsed = response.headers.get('X-Elapsed-Time', 'unspecified error')
+                        api_elapsed = str(data.get('elapsed', 'unspecified error'))
                     except Exception as e:
                         success = False
                         error = str(e)
