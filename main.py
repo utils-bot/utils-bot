@@ -652,7 +652,7 @@ class net(Group):
         if data["success"]:
             redirects = data.get("redirect_list", [])
             embed = Embed(title='Success',description=f'Here is the list of of redirects got from {url} \n||*(took {global_elapsed}ms globally, {data["api_elapsed"]}ms for the API to work, elapsed times including requested delays)*||', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
-            embed.add_field(name = 'Redirects', value = redirects[0] + '\n' + '\n'.join([f'` ->` {i}' for i in redirects[1:]]))
+            embed.add_field(name = 'Redirects', value = f'[{redirects[0]}]' + '\n' + '\n-> [passive]'.join([f'({i})' for i in redirects[1:-1]]) + '\n=>' + redirects[-1])
             await interaction.followup.send(ephemeral = silent, embed=embed)
         else:
             await interaction.followup.send(ephemeral = silent, embed=Embed(title='Error', description=f'Failed to get redirects from the URL, ask developers for more details... [API error?]').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))   
