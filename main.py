@@ -503,7 +503,8 @@ class net(Group):
         api_elapsed = 0
         headers = {'url': url, 'authorization': token}
         while True:
-            debugem = Embed(title="Processing your request...").description = "[...] Validating data\n[] Connect to the API\n[] Fetch redirect list\n[] Return redirect list"
+            debugem = Embed(title="Processing your request...")
+            debugem.description = "[...] Validating data\n[] Connect to the API\n[] Fetch redirect list\n[] Return redirect list"
             await debugmsg.edit(embed = debugem)
             debugem.description = "[OK] Validate data\n[...] Waiting API to finish\n[] Fetch redirect list\n[] Return redirect list"
             await debugmsg.edit(embed = debugem)
