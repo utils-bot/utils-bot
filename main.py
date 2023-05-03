@@ -146,13 +146,14 @@ class sys(Group):
         return i
 
     @command(name='eval', description='system - execute python scripts via eval()')
-    @describe(silent = 'Whether you want the output to be sent to you alone or not', script = 'The script you want to execute', awaited = '(default: False) If you need to "await" your eval')
+    @describe(silent = 'Whether you want the output to be sent to you alone or not', script = 'The script you want to execute', awaited = '(default: False) If you want to turn the script into a coroutine that runs asynchronously')
     async def scripteval(self, interaction: Interaction, script: str, awaited: bool = False, silent: bool = False):
         await interaction.response.defer(ephemeral=silent)
         if not await self.is_authorized(interaction): return
         await interaction.followup.send(embed=Embed(title='Executing...', description='Executing the script...').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), wait=True)
         await asyncio.sleep(0.5)
         ilog(f'{interaction.user.name}#{interaction.user.discriminator} ({interaction.user.id}) eval-ed: {script}', 'eval', 'warning')
+        script = script.encode()
         if not awaited:
             result = eval(script)
         else:
