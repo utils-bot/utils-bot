@@ -495,7 +495,7 @@ class net(Group):
                 data = await response.json()
             return data
     @staticmethod
-    async def get_unshortened(url, debugmsg, api_url=configurations.unshortenapi, token=configurations.unshortensecret):
+    async def get_unshortened(url: str, debugmsg: Webhook, api_url=configurations.unshortenapi, token=configurations.unshortensecret):
         'response example: {"success": success, "redirect_list": redirect_list, "error": error, "api_elapsed": api_elapsed}'
         success = True
         redirect_list = []
@@ -644,7 +644,7 @@ class net(Group):
         global global_ratelimit
         global_ratelimit += 1
         els = time()
-        data = await self.get_unshortened(url, msg)
+        data = await self.get_unshortened(url=url, debugmsg=msg)
         global_ratelimit += -1
         global_elapsed = round(1000*(time() - els))
         await msg.edit(embed=Embed(title="Finished", description="Your request has been processed.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
