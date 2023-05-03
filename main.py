@@ -644,7 +644,7 @@ class net(Group):
         global global_ratelimit
         global_ratelimit += 1
         els = time()
-        data = await self.get_unshortened_url(url, msg)
+        data = await self.get_unshortened(url, msg)
         global_ratelimit += -1
         global_elapsed = round(1000*(time() - els))
         await msg.edit(embed=Embed(title="Finished", description="Your request has been processed.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
