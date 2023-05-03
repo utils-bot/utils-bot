@@ -641,6 +641,7 @@ class net(Group):
             return
         msg = await interaction.followup.send(embed=Embed(title = 'Processing your request...'), ephemeral=True)
         await asyncio.sleep(1)
+        global global_ratelimit
         global_ratelimit += 1
         els = time()
         data = await self.get_unshortened_url(url, msg)
