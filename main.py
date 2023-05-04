@@ -1,11 +1,11 @@
 """---------------------------------------------
 Check .env.example to setup the bot.
 ---------------------------------------------"""
-from discord import Intents, Client, Interaction, Object, Embed, File, Game, Status, Member, Webhook, ButtonStyle, TextStyle
+from discord import Intents, Client, Interaction, Object, Embed as discordEmbed, File, Game, Status, Member, Webhook, ButtonStyle, TextStyle
 from discord.app_commands import CommandTree, Group, command, Choice, choices, describe, Range
 from discord.ui import button, View, Modal, Button, TextInput
 from jsondb import check_bot_version, get_user_whitelist, update_user_whitelist, check_user_whitelist
-import logging, json, typing, functools, traceback, asyncio, json, sentry_sdk
+import logging, typing, traceback, asyncio, json, sentry_sdk
 from aiohttp import ClientSession
 from logger import CustomFormatter, ilog
 from os import system
@@ -13,18 +13,6 @@ from time import time
 from keep_alive import ka
 from io import BytesIO
 from configs import configurations
-
-discord_logger = logging.getLogger('discord')
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-ch.setFormatter(CustomFormatter())
-discord_logger.addHandler(ch)
-del discord_logger
-
-"""
-NỎTES
-- Embeds must include timestamp = datetime.now(), all Embed() object must have .set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar) with it.
-"""
 
 """
 -------------------------------------------------
@@ -59,17 +47,10 @@ class MyClient(Client):
 client = MyClient(intents=intents)
 tree = client.tree
 
-async def antiblock(blocking_func: typing.Callable, *args, **kwargs) -> typing.Any:
-    func = functools.partial(blocking_func, *args, **kwargs)
-    return await client.loop.run_in_executor(None, func)
-
-async def get_redirect_history_aiohttp(url: str):
-    return
-
-def build_mode():
-    with open('version.json', 'w+') as f:
-        json.dump({'current_version': configurations.bot_version}, f)
-        ilog(f'Finished updating version to {configurations.bot_version}', 'build', 'info')
+class Embed(discordEmbed):
+    def uniform(self, interaction):
+        self.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
+        return self
 
 def clean_traceback(traceback_str: str) -> str:
     result = ''
@@ -87,7 +68,7 @@ APPLICATION ERROR HANDLER
 @tree.error
 async def on_error(interaction: Interaction, error):
     if interaction.user.id not in configurations.owner_ids:
-        await interaction.followup.send(embed=Embed(title="Exception occurred:", description= 'Ask the developer of the bot for more information.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+        await interaction.followup.send(embed=Embed(title="Exception occurred:", description= 'Ask the developer of the bot for more information.').uniform(interaction))
         return
     full_err = traceback.format_exc()
     cleaned = clean_traceback(full_err)
@@ -96,9 +77,9 @@ async def on_error(interaction: Interaction, error):
     es = ('Check the console for more information.' if len(minlog) > 1000 else '') + f"```py\n{('...' if minlog_under800 != minlog else '') + minlog_under800}```" + f"```py\n{cleaned.splitlines()[-1]}```"
     # if (i:=interaction.user.id) in configurations.owner_guild_id or i in get_whitelist():
     ilog('---Exception in a application command: ' + full_err + '--------------------end of exception--------------------', logtype= 'error', flag = 'command')
-    await interaction.followup.send(embed=Embed(title="Exception occurred:", description= es, ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+    await interaction.followup.send(embed=Embed(title="Exception occurred:", description= es, ).uniform(interaction))
     # else:
-        # await interaction.followup.send(embed=Embed(title="Exception occurred", description='Contact the bot owner(s) for more information.', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+        # await interaction.followup.send(embed=Embed(title="Exception occurred", description='Contact the bot owner(s) for more information.', ).uniform(interaction))
 
 """-------------------------------------------------
 BASE COMMANDS
@@ -122,9 +103,9 @@ async def sync(interaction: Interaction, delay: Range[int, 0, 60] = 30, silent: 
     global maintenance_status
     await interaction.response.defer(ephemeral=silent)
     if interaction.user.id not in configurations.owner_ids:
-        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
+        await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").uniform(interaction), ephemeral=True)
         return
-    await interaction.followup.send(embed=Embed(title="Syncing job requested", description='A sync job for this bot has been queued. All functions of the bot will be disabled to prevent ratelimit.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent)
+    await interaction.followup.send(embed=Embed(title="Syncing job requested", description='A sync job for this bot has been queued. All functions of the bot will be disabled to prevent ratelimit.').uniform(interaction), ephemeral=silent)
     await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
     maintenance_status = True
     await asyncio.sleep(delay)
@@ -132,7 +113,7 @@ async def sync(interaction: Interaction, delay: Range[int, 0, 60] = 30, silent: 
     ilog(f'Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}', logtype = 'info', flag = 'tree')
     maintenance_status = configurations.default_maintenance_status
     await asyncio.sleep(10)
-    await interaction.followup.send(embed=Embed(title="Command tree synced", description='Successfully synced the global command tree to all guilds').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent)
+    await interaction.followup.send(embed=Embed(title="Command tree synced", description='Successfully synced the global command tree to all guilds').uniform(interaction), ephemeral=silent)
     await client.change_presence(activity=Game('synced. reloading...'), status=Status.dnd)
     await asyncio.sleep(5)
     await client.change_presence(activity=Game('version ' + configurations.bot_version + ' [outdated]' if not check_bot_version(configurations.bot_version) else ""), status=Status.online)
@@ -142,7 +123,7 @@ class sys(Group):
     async def is_authorized(interaction: Interaction):
         i = interaction.user.id in configurations.owner_ids
         if not i:
-            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
+            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").uniform(interaction), ephemeral=True)
         return i
 
     @command(name='eval', description='system - execute python scripts via eval()')
@@ -150,7 +131,7 @@ class sys(Group):
     async def scripteval(self, interaction: Interaction, script: str, awaited: bool = False, silent: bool = False):
         await interaction.response.defer(ephemeral=silent)
         if not await self.is_authorized(interaction): return
-        await interaction.followup.send(embed=Embed(title='Executing...', description='Executing the script...').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), wait=True)
+        await interaction.followup.send(embed=Embed(title='Executing...', description='Executing the script...').uniform(interaction), wait=True)
         await asyncio.sleep(0.5)
         ilog(f'{interaction.user.name}#{interaction.user.discriminator} ({interaction.user.id}) eval-ed: {script}', 'eval', 'warning')
         script = script.encode()
@@ -159,9 +140,9 @@ class sys(Group):
         else:
             result = await eval(script)
         if not result:
-            await interaction.followup.send(ephemeral=silent, embed=Embed(title="Script executed", description='Script executed successfully, the result, might be `None` or too long to fill in here.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await interaction.followup.send(ephemeral=silent, embed=Embed(title="Script executed", description='Script executed successfully, the result, might be `None` or too long to fill in here.').uniform(interaction))
         else:
-            await interaction.followup.send(ephemeral=silent, embed=Embed(title="Result", description= "```py\n" + str(result) + "```", ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await interaction.followup.send(ephemeral=silent, embed=Embed(title="Result", description= "```py\n" + str(result) + "```", ).uniform(interaction))
     @command(name = 'guilds', description= 'system - list guilds that the bot are currently in.')
     @describe(silent = 'Whether you want the output to be sent to you alone or not')
     async def guilds(self, interaction: Interaction, silent: bool = True):
@@ -176,7 +157,6 @@ class sys(Group):
             current_list = "<too many guilds>"
         embed.add_field(name = 'Guilds:', value = f"`{current_list}`")
         await interaction.followup.send(embed=embed, ephemeral=silent)
-    
     whitelist = Group(name='whitelist', description='Get and modify the beta whitelist in the database')
     @whitelist.command(name = 'list', description ='system - Get beta whitelist list in whitelist.json')
     @describe(silent = 'Whether you want the output to be sent to you alone or not')
@@ -184,7 +164,7 @@ class sys(Group):
         await interaction.response.defer(ephemeral=silent)
         if not await self.is_authorized(interaction): return
 
-        embed = Embed(title='Whitelist list', description='Here is the list of beta-whitelisted user IDs:').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
+        embed = Embed(title='Whitelist list', description='Here is the list of beta-whitelisted user IDs:').uniform(interaction)
         current_list = ""
         for i in await get_user_whitelist():
             current_list += f'<@{i}> ({i})\n'
@@ -200,47 +180,47 @@ class sys(Group):
         
         try:
             update_status = await update_user_whitelist(user = user.id, add = mode == 'add')
-            await interaction.followup.send(embed=Embed(title='Done', description=f'Successfully {"added" if mode == "add" else "removed"} this user in the list: {user.mention} ({user.id})').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar) if update_status else Embed(title='Failed', description='A error occured').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent)
+            await interaction.followup.send(embed=Embed(title='Done', description=f'Successfully {"added" if mode == "add" else "removed"} this user in the list: {user.mention} ({user.id})').uniform(interaction) if update_status else Embed(title='Failed', description='A error occured').uniform(interaction), ephemeral=silent)
         except Exception as e:
             ilog('Exception in command /whitelist_modify:' + e, logtype= 'error', flag = 'command')
-            await interaction.followup.send(ephemeral= True, embed=Embed(title="Exception occurred", description=str(e), ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await interaction.followup.send(ephemeral= True, embed=Embed(title="Exception occurred", description=str(e), ).uniform(interaction))
 
 class locsys(Group):
     @staticmethod
     async def is_authorized(interaction: Interaction):
         i = interaction.user.id in configurations.owner_ids
         if not i:
-            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
+            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").uniform(interaction), ephemeral=True)
         return i
     
     @command(name='update', description='system - update bot repo')
     @describe(silent = 'Whether you want the output to be sent to you alone or not')
     async def update_bot(self, interaction: Interaction, silent: bool = False):
         await interaction.response.defer(ephemeral=silent)
-        if (not configurations.is_replit) or (not configurations.no_git_automation): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on a system that can auto-update itself.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent); return
+        if (not configurations.is_replit) or (not configurations.no_git_automation): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on a system that can auto-update itself.').uniform(interaction), ephemeral=silent); return
         if not await self.is_authorized(interaction): return
         
         ilog("Updating git repo...", 'git', 'warning')
         system('git fetch --all')
         system('git reset --hard origin/main')
         
-        await interaction.followup.send(embed=Embed(title="Done", description='Successfully updated the bot repo on Github.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent)
+        await interaction.followup.send(embed=Embed(title="Done", description='Successfully updated the bot repo on Github.').uniform(interaction), ephemeral=silent)
 
     @command(name='version', description='system - check the code version')
     @describe(silent = 'Whether you want the output to be sent to you alone or not')
     async def version(self, interaction: Interaction, silent: bool = False):
         await interaction.response.defer(ephemeral=silent)
-        if (not configurations.is_replit) or (not configurations.no_git_automation): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on a system that can auto-update itself.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent); return
+        if (not configurations.is_replit) or (not configurations.no_git_automation): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on a system that can auto-update itself.').uniform(interaction), ephemeral=silent); return
         if not await self.is_authorized(interaction): return
-        await interaction.followup.send(ephemeral=silent, embed=Embed(title = 'Bot version:', description= f'Bot version {configurations.bot_version} {"[outdated]" if not check_bot_version(configurations.bot_version) else "[up-to-date]"}').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+        await interaction.followup.send(ephemeral=silent, embed=Embed(title = 'Bot version:', description= f'Bot version {configurations.bot_version} {"[outdated]" if not check_bot_version(configurations.bot_version) else "[up-to-date]"}').uniform(interaction))
 
     @command(name='restart', description='system - Restart the bot')
     @describe(silent = 'Whether you want the output to be sent to you alone or not')
     async def restartbot(self, interaction: Interaction, silent: bool = True):
         await interaction.response.defer(ephemeral=silent)
         if not await self.is_authorized(interaction): return
-        if (not configurations.is_replit): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on non-docker system.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent); return
-        await interaction.followup.send(embed=Embed(title="Received", description="Restart request received, killing docker container...", ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=silent)
+        if (not configurations.is_replit): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on non-docker system.').uniform(interaction), ephemeral=silent); return
+        await interaction.followup.send(embed=Embed(title="Received", description="Restart request received, killing docker container...", ).uniform(interaction), ephemeral=silent)
         ilog(f'[+] Restart request by {interaction.user.id} ({interaction.user.display_name})', 'command', 'info')
         ilog('Restarting...', 'system', 'critical')
         await client.change_presence(status=Status.dnd, activity=Game('restarting...'))
@@ -255,7 +235,7 @@ class locsys(Group):
         global maintenance_status
         old = maintenance_status
         maintenance_status = status_to_set
-        await interaction.followup.send(embed=Embed(title='Success', description=f'Maintenance status changed: {old} -> {maintenance_status}').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+        await interaction.followup.send(embed=Embed(title='Success', description=f'Maintenance status changed: {old} -> {maintenance_status}').uniform(interaction))
 
 
 tree.add_command(locsys(), guild=Object(id=configurations.owner_guild_id))
@@ -436,7 +416,7 @@ class game(Group):
     @staticmethod
     async def is_authorized(interaction: Interaction):
         if maintenance_status:
-            await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction))
             return False
         i = (await check_user_whitelist(user = interaction.user.id))
         l = (interaction.user.id in configurations.owner_ids)
@@ -445,13 +425,13 @@ class game(Group):
         if l:
             return True
         elif not k:
-            await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.').uniform(interaction))
             return False
         elif not p:
-            await interaction.followup.send(embed=Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await interaction.followup.send(embed=Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').uniform(interaction))
             return False
         elif not (i or l):
-            await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').uniform(interaction))
             return False
         return True
     @command(name='wordle', description='BETA - Play Wordle in Discord.')
@@ -462,7 +442,7 @@ class game(Group):
         instance = game_wordle(interaction)
         view = instance.start()
         await interaction.followup.send(embed=Embed(title='Wordle', description='- Guess the Wordle in 6 tries.\n- Each guess must be a valid 5-letter word.\n- The letter indicators will change to show how close your guess was to the word. Examples:\n```[W]EARY\nW is in the word and in the correct spot.\nP<I>LLS\nI is in the word but in the wrong spot.```')\
-                                        .set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), view=view, ephemeral=silent)
+                                        .uniform(interaction), view=view, ephemeral=silent)
 
 tree.add_command(game())
 
@@ -470,7 +450,7 @@ class net(Group):
     @staticmethod
     async def is_authorized(interaction: Interaction):
         if maintenance_status:
-            await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction))
             return False
         i = (await check_user_whitelist(user = interaction.user.id))
         l = (interaction.user.id in configurations.owner_ids)
@@ -479,13 +459,13 @@ class net(Group):
         if l:
             return True
         elif not k:
-            await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.').uniform(interaction))
             return False
         elif not p:
-            await interaction.followup.send(embed=Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await interaction.followup.send(embed=Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').uniform(interaction))
             return False
         elif not (i or l):
-            await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+            await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').uniform(interaction))
             return False
         return True
     @staticmethod
@@ -571,13 +551,13 @@ class net(Group):
         # conditions to stop executing the command
         if not await self.is_authorized(interaction): return 
         if not url.startswith('http'):
-            await interaction.followup.send(embed=Embed(title='Error', description='Please provide a valid URL, including http or https.', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = silent)
+            await interaction.followup.send(embed=Embed(title='Error', description='Please provide a valid URL, including http or https.', ).uniform(interaction), ephemeral = silent)
             return
         if any(url.startswith(i) for i in [x + y for x in ['http://', 'https://'] for y in ['0.0.0.0', '127.0.0.1', 'localhost']]):
-            await interaction.followup.send(embed=Embed(title='Error', description='Please do not try to access localhost.', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = silent)
+            await interaction.followup.send(embed=Embed(title='Error', description='Please do not try to access localhost.', ).uniform(interaction), ephemeral = silent)
             return
         if global_ratelimit >= configurations.max_global_ratelimit:
-            await interaction.followup.send(embed=Embed(title='Rate-limited', description='Bot is currently global rate-limited, please try again later').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral= True)
+            await interaction.followup.send(embed=Embed(title='Rate-limited', description='Bot is currently global rate-limited, please try again later').uniform(interaction), ephemeral= True)
             return
         msg = await interaction.followup.send(embed=Embed(title = 'Processing your request...'), ephemeral=True)
         await asyncio.sleep(1)
@@ -586,14 +566,14 @@ class net(Group):
         data = await self.get_screenshot(url=url, resolution=resolution, delay=delay, debugmsg=msg)
         global_ratelimit += -1
         global_elapsed = round(1000*(time() - els))
-        await msg.edit(embed=Embed(title="Finished", description="Your request has been processed.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+        await msg.edit(embed=Embed(title="Finished", description="Your request has been processed.").uniform(interaction))
         if data["success"]:
             image_bytes = data["image_data"]
-            embed = Embed(title='Success',description=f'Here is the website screenshot of {url} \n||*(took {global_elapsed}ms globally, {data["api_elapsed"]}ms for the API to work, elapsed times including requested delays)*||', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
+            embed = Embed(title='Success',description=f'Here is the website screenshot of {url} \n||*(took {global_elapsed}ms globally, {data["api_elapsed"]}ms for the API to work, elapsed times including requested delays)*||', ).uniform(interaction)
             embed.set_image(url='attachment://screenshot.png')
             await interaction.followup.send(ephemeral = silent, embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
         else:
-            await interaction.followup.send(ephemeral = silent, embed=Embed(title='Error', description=f'Failed to get the screenshot from the API, ask developers for more details... [API error?]').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))   
+            await interaction.followup.send(ephemeral = silent, embed=Embed(title='Error', description=f'Failed to get the screenshot from the API, ask developers for more details... [API error?]').uniform(interaction))   
     @command(name = 'ip', description='Use APIs to fetch information about a IPv4 address.')
     @describe(ipv4 = "The IPv4 address you want to fetch.", silent = 'Whether you want the output to be sent to you alone or not')
     # @choices(ipv4 = [Choice(value = i) for i in [f"{x}.{y}.{z}.{t}" for x in range(0, 255) for y in range(0, 255) for z in range(0, 255) for t in range(0, 255)]])
@@ -601,7 +581,7 @@ class net(Group):
         await interaction.response.defer(ephemeral=silent)
         if not await self.is_authorized(interaction): return
         if not (lambda ip: len(x:= ip.split('.')) == 4 and all(part.isdigit() and 0 <= int(part) <= 255 for part in x))(ipv4):
-            await interaction.followup.send(embed=Embed(title='Error', description='Input IPv4 address is invalid.', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = silent)
+            await interaction.followup.send(embed=Embed(title='Error', description='Input IPv4 address is invalid.', ).uniform(interaction), ephemeral = silent)
             return
         ipdata = await self.get_ip_info(ipv4)
         embed = Embed(title=f"IP information", description= f"Here's the information for `{ipv4}`:")
@@ -627,7 +607,7 @@ class net(Group):
         for field_name, field_value in fieldlist:
             if field_value is None: continue
             embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=False)
-        embed.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
+        embed.uniform(interaction)
         await interaction.followup.send(embed = embed, ephemeral=silent)
     @command(name = 'unshort_url', description='Capture redirects from a URL and return the final URL.')
     @describe(url = "The URL you want to unshorten.", silent = 'Whether you want the output to be sent to you alone or not')
@@ -635,10 +615,10 @@ class net(Group):
         await interaction.response.defer(ephemeral=silent)
         if not await self.is_authorized(interaction): return
         if not url.startswith('http'):
-            await interaction.followup.send(embed=Embed(title='Error', description='Please provide a valid URL, including http or https.', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = silent)
+            await interaction.followup.send(embed=Embed(title='Error', description='Please provide a valid URL, including http or https.', ).uniform(interaction), ephemeral = silent)
             return
         if any(url.startswith(i) for i in [x + y for x in ['http://', 'https://'] for y in ['0.0.0.0', '127.0.0.1', 'localhost']]):
-            await interaction.followup.send(embed=Embed(title='Error', description='Please do not try to access localhost.', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral = silent)
+            await interaction.followup.send(embed=Embed(title='Error', description='Please do not try to access localhost.', ).uniform(interaction), ephemeral = silent)
             return
         msg = await interaction.followup.send(embed=Embed(title = 'Processing your request...'), ephemeral=True)
         await asyncio.sleep(1)
@@ -648,14 +628,14 @@ class net(Group):
         data = await self.get_unshortened(url=url, debugmsg=msg)
         global_ratelimit += -1
         global_elapsed = round(1000*(time() - els))
-        await msg.edit(embed=Embed(title="Finished", description="Your request has been processed.").set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))
+        await msg.edit(embed=Embed(title="Finished", description="Your request has been processed.").uniform(interaction))
         if data["success"]:
             redirects = data.get("redirect_list", [])
-            embed = Embed(title='Success',description=f'Here is the list of of redirects got from {url} \n||*(took {global_elapsed}ms globally, {data["api_elapsed"]}ms for the API to work, elapsed times including requested delays)*||', ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
+            embed = Embed(title='Success',description=f'Here is the list of of redirects got from {url} \n||*(took {global_elapsed}ms globally, {data["api_elapsed"]}ms for the API to work, elapsed times including requested delays)*||', ).uniform(interaction)
             embed.add_field(name = 'Redirects', value = f'[{redirects[0]}]' + '\n' + '\n-> [passive]'.join([f'({i})' for i in redirects[1:-1]]) + '\n=> ' + redirects[-1])
             await interaction.followup.send(ephemeral = silent, embed=embed)
         else:
-            await interaction.followup.send(ephemeral = silent, embed=Embed(title='Error', description=f'Failed to get redirects from the URL, ask developers for more details... [API error?]').set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar))   
+            await interaction.followup.send(ephemeral = silent, embed=Embed(title='Error', description=f'Failed to get redirects from the URL, ask developers for more details... [API error?]').uniform(interaction))   
 
 tree.add_command(net())
 """
@@ -671,7 +651,7 @@ FEATURE COMMANDS (official)
 async def uptime(interaction: Interaction):
     global unix_uptime
     await interaction.response.defer(ephemeral=True)
-    await interaction.followup.send(embed=Embed(title="Current bot uptime", description=f"Bot was online <t:{unix_uptime}:R> (<t:{unix_uptime}:T> <t:{unix_uptime}:d>) ", ).set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar), ephemeral=True)
+    await interaction.followup.send(embed=Embed(title="Current bot uptime", description=f"Bot was online <t:{unix_uptime}:R> (<t:{unix_uptime}:T> <t:{unix_uptime}:d>) ", ).uniform(interaction), ephemeral=True)
 
 """
 -------------------------------------------------
@@ -698,6 +678,17 @@ async def on_ready():
 BOOT
 -------------------------------------------------
 """
+discord_logger = logging.getLogger('discord')
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+ch.setFormatter(CustomFormatter())
+discord_logger.addHandler(ch)
+del discord_logger
+
+def build_mode():
+    with open('version.json', 'w+') as f:
+        json.dump({'current_version': configurations.bot_version}, f)
+        ilog(f'Finished updating version to {configurations.bot_version}', 'build', 'info')
 def run():
     # some checks before run, soonTM
     if configurations.using_sentry:
