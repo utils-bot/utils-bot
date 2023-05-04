@@ -43,6 +43,17 @@ class MyClient(Client):
         ilog("Done! Bot will be ready soon", 'init', 'info')
         await asyncio.sleep(3)
         return
+    async def on_ready(self):
+        ilog("Bot is ready. Getting informations...", 'init', 'info')
+        await self.change_presence(activity=Game('starting...'), status=Status.idle)
+        await asyncio.sleep(2)
+        ilog(f"Bot is currently on version {configurations.bot_version}", 'init', 'info')
+        ilog(str(self.user) + ' has connected to Discord.', 'init', 'info')
+        guilds_num = len(self.guilds)
+        members_num = len(set(member for guild in self.guilds for member in guild.members))
+        ilog('Connected to ' + str(guilds_num) + ' guilds and ' + str(members_num)  + ' users.', 'init', 'info')
+        await asyncio.sleep(5)
+        await self.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
 
 client = MyClient(intents=intents)
 tree = client.tree
