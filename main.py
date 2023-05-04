@@ -670,7 +670,8 @@ CLIENT EVENTS
 on_ready()
 -------------------------------------------------
 """
-@client.event
+
+"""@client.event
 async def on_ready():
     ilog("Bot is ready. Getting informations...", 'init', 'info')
     await client.change_presence(activity=Game('starting...'), status=Status.idle)
@@ -682,7 +683,7 @@ async def on_ready():
     ilog('Connected to ' + str(guilds_num) + ' guilds and ' + str(members_num)  + ' users.', 'init', 'info')
     await asyncio.sleep(5)
     await client.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
-
+"""
 
 """
 -------------------------------------------------
