@@ -108,6 +108,7 @@ BASE COMMANDS
 |-- restart
 |-- maintenance
 -------------------------------------------------""" 
+
 @tree.command(name='sync', description='system - sync all commands to all guilds manually')#, guild=Object(id=configurations.owner_guild_id))
 @describe(silent = 'Whether you want the output to be sent to you alone or not')
 async def sync(interaction: Interaction, delay: Range[int, 0, 60] = 30, silent: bool = False):
@@ -649,41 +650,12 @@ class net(Group):
             await interaction.followup.send(ephemeral = silent, embed=Embed(title='Error', description=f'Failed to get redirects from the URL, ask developers for more details... [API error?]').uniform(interaction))   
 
 tree.add_command(net())
-"""
--------------------------------------------------
-FEATURE COMMANDS (official)
--------------------------------------------------
-/echo
-/uptime
-"""
-
 
 @tree.command(name='uptime', description='Returns the bot uptime.')
 async def uptime(interaction: Interaction):
     global unix_uptime
     await interaction.response.defer(ephemeral=True)
     await interaction.followup.send(embed=Embed(title="Current bot uptime", description=f"Bot was online <t:{unix_uptime}:R> (<t:{unix_uptime}:T> <t:{unix_uptime}:d>) ", ).uniform(interaction), ephemeral=True)
-
-"""
--------------------------------------------------
-CLIENT EVENTS
-on_ready()
--------------------------------------------------
-"""
-
-"""@client.event
-async def on_ready():
-    ilog("Bot is ready. Getting informations...", 'init', 'info')
-    await client.change_presence(activity=Game('starting...'), status=Status.idle)
-    await asyncio.sleep(2)
-    ilog(f"Bot is currently on version {configurations.bot_version}", 'init', 'info')
-    ilog(str(client.user) + ' has connected to Discord.', 'init', 'info')
-    guilds_num = len(client.guilds)
-    members_num = len(set(member for guild in client.guilds for member in guild.members))
-    ilog('Connected to ' + str(guilds_num) + ' guilds and ' + str(members_num)  + ' users.', 'init', 'info')
-    await asyncio.sleep(5)
-    await client.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
-"""
 
 """
 -------------------------------------------------
@@ -706,9 +678,11 @@ def run():
     if configurations.using_sentry:
         ilog('Initializing Sentry...', 'init', 'info')
         sentry_sdk.init(dsn=configurations.sentry_dsn, traces_sample_rate=1.0)
+        ilog('Sentry is ready!', 'init', 'info')
     if configurations.is_replit:
         ilog('Starting flask keep-alive server...', 'init', 'info')
         ka()
+        ilog('Flask server is ready!', 'init', 'info')
     ilog('Starting Discord client...', 'init', 'info')
     client.run(configurations.bot_token)
 build = not configurations.not_builder
