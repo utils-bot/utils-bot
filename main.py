@@ -1,6 +1,7 @@
 """---------------------------------------------
 Check .env.example to setup the bot.
 ---------------------------------------------"""
+
 from discord import Intents, Client, Interaction, Object, Embed as discordEmbed, File, Game, Status, Member, Webhook, ButtonStyle, TextStyle
 from discord.app_commands import CommandTree, Group, command, Choice, choices, describe, Range
 from discord.ui import button, View, Modal, Button, TextInput
