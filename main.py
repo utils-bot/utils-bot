@@ -129,7 +129,7 @@ async def sync(interaction: Interaction, delay: Range[int, 0, 60] = 30, silent: 
     await interaction.followup.send(embed=Embed(title="Command tree synced", description='Successfully synced the global command tree to all guilds').uniform(interaction), ephemeral=silent)
     await client.change_presence(activity=Game('synced. reloading...'), status=Status.dnd)
     await asyncio.sleep(5)
-    await client.change_presence(activity=Game('version ' + configurations.bot_version + ' [outdated]' if not check_bot_version(configurations.bot_version) else ""), status=Status.online)
+    await client.change_presence(activity=Game('version ' + configurations.bot_version + (' [outdated]' if not check_bot_version(configurations.bot_version) else "")), status=Status.online)
 
 class sys(Group):
     @staticmethod
