@@ -1,6 +1,6 @@
 # utils-bot
 
-utils- bot is a discord.py bot packaged with unique features.
+utils-bot is a discord.py bot packaged with unique features.
 
 ## Deploying
 
