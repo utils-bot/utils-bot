@@ -5,7 +5,7 @@ utils-bot is a discord.py bot packaged with unique features.
 ## Deploying
 
 ### You can deploy the bot by yourself:
-0. Clone the repo (either download the .zip file or `git clone` it.
+0. Clone the repo either download the .zip file or `git clone` it.
 
 1. Install dependencies: `python3 -m pip install -r requirements.txt`
 
