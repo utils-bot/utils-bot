@@ -22,14 +22,14 @@ DEFINING VARS
 """
 
 
-intents = Intents.default()
-intents.members = True
+
 class MyClient(Client):
-    def __init__(self, *, intents: Intents) -> None:
+    def __init__(self, *, intents: Intents = Intents.default()) -> None:
         super().__init__(intents=intents)
         self.tree = CommandTree(self)
         return
     async def setup_hook(self):
+        "Do value resets, pre-sync to development guild"
         # varible reset
         global unix_uptime
         global global_ratelimit
@@ -45,6 +45,7 @@ class MyClient(Client):
         await asyncio.sleep(3)
         return
     async def on_ready(self):
+        "Set status, Return bot statistics"
         ilog("Bot is ready. Getting informations...", 'init', 'info')
         await self.change_presence(activity=Game('starting...'), status=Status.idle)
         await asyncio.sleep(2)
@@ -56,6 +57,8 @@ class MyClient(Client):
         await asyncio.sleep(5)
         await self.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
 
+intents = Intents.default()
+intents.members = True # Requires verification
 client = MyClient(intents=intents)
 tree = client.tree
 
@@ -140,22 +143,17 @@ class sys(Group):
         return i
 
     @command(name='eval', description='system - execute python scripts via eval()')
-    @describe(silent = 'Whether you want the output to be sent to you alone or not', script = 'The script you want to execute', awaited = '(default: False) If you want to turn the script into a coroutine that runs asynchronously')
-    async def scripteval(self, interaction: Interaction, script: str, awaited: bool = False, silent: bool = False):
+    @describe(silent = 'Whether you want the output to be sent to you alone or not', script = 'The script you want to execute, leave blank if you want a modal ask for the code. (which can be multi-line-ed)', awaited = '(default: False) If you want to turn the script into a coroutine that runs asynchronously')
+    async def scripteval(self, interaction: Interaction, script: str = '', awaited: bool = False, silent: bool = False):
         await interaction.response.defer(ephemeral=silent)
         if not await self.is_authorized(interaction): return
         await interaction.followup.send(embed=Embed(title='Executing...', description='Executing the script...').uniform(interaction), wait=True)
         await asyncio.sleep(0.5)
         ilog(f'{interaction.user.name}#{interaction.user.discriminator} ({interaction.user.id}) eval-ed: {script}', 'eval', 'warning')
-        script = script.encode()
-        if not awaited:
-            result = eval(script)
-        else:
-            result = await eval(script)
-        if not result:
-            await interaction.followup.send(ephemeral=silent, embed=Embed(title="Script executed", description='Script executed successfully, the result, might be `None` or too long to fill in here.').uniform(interaction))
-        else:
-            await interaction.followup.send(ephemeral=silent, embed=Embed(title="Result", description= "```py\n" + str(result) + "```", ).uniform(interaction))
+        if not awaited: result = eval(script)
+        else: result = await eval(script)
+        if not result: await interaction.followup.send(ephemeral=silent, embed=Embed(title="Script executed", description='Script executed successfully, the result, might be `None` or too long to fill in here.').uniform(interaction))
+        else: await interaction.followup.send(ephemeral=silent, embed=Embed(title="Result", description= "```py\n" + str(result) + "```", ).uniform(interaction))
     @command(name = 'guilds', description= 'system - list guilds that the bot are currently in.')
     @describe(silent = 'Whether you want the output to be sent to you alone or not')
     async def guilds(self, interaction: Interaction, silent: bool = True):
@@ -270,19 +268,19 @@ FEATURE COMMANDS (beta)
 class game_wordle():
     "This class is used for the command /game wordle; the only method should be used is .start() -> return the ui.View to the user"
     # TODO: analysis: word difficulty,  word length, word frequency...
-    def __init__(ego, interaction: Interaction) -> None:
-        ego.interaction = interaction
-        ego.tries = 6
-        ego.secret_word = None
-        ego.tried = []
-        ego.tried_efficiency = []
+    def __init__(this, interaction: Interaction) -> None:
+        this.interaction = interaction
+        this.tries = 6
+        this.secret_word = None
+        this.tried = []
+        this.tried_efficiency = []
 
-    async def gameplay(ego):
-        if ego.secret_word is None: ego.secret_word = (await ego.get_word()).get("word", "smhhh")
+    async def gameplay(this):
+        if this.secret_word is None: this.secret_word = (await this.get_word()).get("word", "smhhh")
         embed = Embed(title="Wordle")
-        embed.description = "Make a guess by click the green guess button below!\n`Your guesses:` ```\n" + "\n".join(ego.tried) + "```"
-        embed.set_footer(text = f'Requested by {ego.interaction.user.name}#{ego.interaction.user.discriminator}', icon_url=ego.interaction.user.avatar)
-        await ego.interaction.edit_original_response(embed=embed, view=ego.play())
+        embed.description = "Make a guess by click the green guess button below!\n`Your guesses:` ```\n" + "\n".join(this.tried) + "```"
+        embed.set_footer(text = f'Requested by {this.interaction.user.name}#{this.interaction.user.discriminator}', icon_url=this.interaction.user.avatar)
+        await this.interaction.edit_original_response(embed=embed, view=this.play())
     
     @staticmethod
     async def compare_word(word: str, secret: str):
@@ -336,27 +334,27 @@ class game_wordle():
                     success = False
         return {"word": word, "success": success}
     
-    def start(ego) -> None:
-        return ego.startView(ego)
-    def play(ego) -> None:
-        return ego.gameplayView(ego)
-    def guess(ego) -> None:
-        return ego.guessModal(ego)
-    async def won(ego) -> None:
+    def start(this) -> None:
+        return this.startView(this)
+    def play(this) -> None:
+        return this.gameplayView(this)
+    def guess(this) -> None:
+        return this.guessModal(this)
+    async def won(this) -> None:
         embed = Embed(title="Wordle")
-        embed.description = f"**You won with {ego.tries} trie(s) left!** :heart:\nThe secret word was: `{ego.secret_word}`\nYour guesses: ```\n" + "\n".join(ego.tried) + "```"
+        embed.description = f"**You won with {this.tries} trie(s) left!** :heart:\nThe secret word was: `{this.secret_word}`\nYour guesses: ```\n" + "\n".join(this.tried) + "```"
         underline = "\n"
-        embed.add_field(name = "*Analysis*", value = f"""- *Secret word difficulty*: *<comming soon>*\n- *Guess efficiency*: ```{underline.join(map(lambda x: str(x) + "%", ego.tried_efficiency))}```""")
-        embed.set_footer(text = f'Requested by {ego.interaction.user.name}#{ego.interaction.user.discriminator}', icon_url=ego.interaction.user.avatar)
-        await ego.interaction.edit_original_response(embed = embed, view = None)
+        embed.add_field(name = "*Analysis*", value = f"""- *Secret word difficulty*: *<comming soon>*\n- *Guess efficiency*: ```{underline.join(map(lambda x: str(x) + "%", this.tried_efficiency))}```""")
+        embed.set_footer(text = f'Requested by {this.interaction.user.name}#{this.interaction.user.discriminator}', icon_url=this.interaction.user.avatar)
+        await this.interaction.edit_original_response(embed = embed, view = None)
         # GAME ENdED
-    async def lost(ego) -> None:
+    async def lost(this) -> None:
         embed = Embed(title="Wordle")
-        embed.description = f"**You lost!** :joy: \nThe secret word was: `{ego.secret_word}`\nYour guesses: ```\n" + "\n".join(ego.tried) + "```"
+        embed.description = f"**You lost!** :joy: \nThe secret word was: `{this.secret_word}`\nYour guesses: ```\n" + "\n".join(this.tried) + "```"
         underline = '\n'
-        embed.add_field(name = "*Analysis*", value = f"""- *Secret word difficulty*: *<comming soon>*\n- *Guess efficiency*: ```{underline.join(map(lambda x: str(x) + "%", ego.tried_efficiency))}```""")
-        embed.set_footer(text = f'Requested by {ego.interaction.user.name}#{ego.interaction.user.discriminator}', icon_url=ego.interaction.user.avatar)
-        await ego.interaction.edit_original_response(embed = embed, view = None)
+        embed.add_field(name = "*Analysis*", value = f"""- *Secret word difficulty*: *<comming soon>*\n- *Guess efficiency*: ```{underline.join(map(lambda x: str(x) + "%", this.tried_efficiency))}```""")
+        embed.set_footer(text = f'Requested by {this.interaction.user.name}#{this.interaction.user.discriminator}', icon_url=this.interaction.user.avatar)
+        await this.interaction.edit_original_response(embed = embed, view = None)
 
     class guessModal(Modal, title='Guess your Wordle'):
         def __init__(self, main) -> None:
@@ -555,6 +553,14 @@ class net(Group):
             break
         return {"success": success, "image_data": image_data, "error": error, "api_elapsed": api_elapsed}
     
+    #@command(name='rayso', description='BETA - Create beautiful images of your code using ray.so')
+    #@describe(title="The title of the code snippet", theme="The color scheme of the code you want to use", background="Whether you want a background or not", darkMode="Whether you want dark mode or not", padding="The padding around the content of the code snippet", language="The language the code is in", silent="Whether you want the output to be sent to you alone or not")
+    #@choices(theme=[Choice(value=i, name=k) for i, k in [('breeze', 'Breeze'), ('candy', 'Candy'), ('crimson', 'Crimson'), ('falcon', 'Falcon'), ('meadow', 'Meadow'), ('midnight', 'Midnight'), ('raindrop', 'Raindrop'), ('sunset', 'Sunset')]], padding=[Choice(value=i, name=k) for i, k in [(16, 'small: 16'), (32, 'medium: 32'), (64, 'large: 64'), (128, 'xtralarge: 128')]], language=None)
+    async def rayso(self, interaction: Interaction, title: str = 'main', theme: str = 'breeze', background: bool = True, darkMode: bool = True, padding: int = 32, language: str = 'auto', silent: bool = False):
+        # await interaction.response.defer(ephemeral=silent)
+        if not await self.is_authorized(interaction): return
+        # TODO: send a modal/view to get the code, process it and send it to the API, and then return the image.
+
     @command(name='screenshot', description='BETA - Take a screenshot of a website')
     @describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s) (default: 0)', resolution = 'Resolution of the driver window (Default: 720p)', silent = 'Whether you want the output to be sent to you alone or not')
     @choices(resolution = [Choice(value=i, name=k) for i, k in [(240, '240p - Minimum'), (360, '360p - Website'), (480, '480p - Standard'), (720, '720p - HD'), (1080, '1080p - Full HD'), (1440, '1440p - 2K'), (2160, '2160p - 4K')]]) # , ('undetected_selenium', 'Selenium + Undetected Chromium (for bypassing)') # engine = [Choice(value=i, name=k) for i, k in [('selenium', 'Selenium + Chromium'), ('playwright', 'Playwright + Chromium')]]
@@ -651,6 +657,12 @@ class net(Group):
             await interaction.followup.send(ephemeral = silent, embed=Embed(title='Error', description=f'Failed to get redirects from the URL, ask developers for more details... [API error?]').uniform(interaction))   
 
 tree.add_command(net())
+
+@tree.command(name='ping', description='Returns the bot latency.')
+async def ping(interaction: Interaction):
+    await interaction.response.defer(ephemeral=True)
+    await interaction.followup.send(embed=Embed(title="Pong!", description=f"Bot latency: `{round(client.latency*1000)}ms`", ).uniform(interaction), ephemeral=True)
+
 
 @tree.command(name='uptime', description='Returns the bot uptime.')
 async def uptime(interaction: Interaction):
