@@ -1,4 +1,5 @@
 import logging
+from typing import Literal
 class CustomFormatter(logging.Formatter):
 
     grey = "\x1b[38;20m"
@@ -28,7 +29,7 @@ ch.setLevel(logging.DEBUG)
 ch.setFormatter(CustomFormatter())
 log.addHandler(ch)
 
-def ilog(msg: str, flag: str = '', logtype: str = ['debug', 'info', 'warning', 'error', 'critical'][1]):
+def ilog(msg: str, flag: str = '', logtype: Literal['debug', 'info', 'warning', 'error', 'critical'] = 'info'):
     logtype = logtype.lower()
     if logtype not in ['debug', 'info', 'warning', 'error', 'critical']: return
     printlog = log.info if logtype == 'info' else log.debug if logtype == 'debug' else log.warning if logtype == 'warning' else log.error if logtype == 'error' else log.critical if logtype == 'critical' else None

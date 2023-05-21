@@ -91,8 +91,8 @@ async def on_error(interaction: Interaction, error):
     minlog_under800 = minlog[-800:] 
     es = ('Check the console for more information.' if len(minlog) > 1000 else '') + f"```py\n{('...' if minlog_under800 != minlog else '') + minlog_under800}```" + f"```py\n{cleaned.splitlines()[-1]}```"
     # if (i:=interaction.user.id) in configurations.owner_guild_id or i in get_whitelist():
-    ilog('---Exception in a application command: ' + full_err + '--------------------end of exception--------------------', logtype= 'error', flag = 'command')
-    await interaction.followup.send(embed=Embed(title="Exception occurred:", description= es, ).uniform(interaction))
+    ilog('Exception in a application command: \n' + full_err + '> END OF TRACEBACK <', logtype= 'error', flag = 'command')
+    await interaction.followup.send(embed=Embed(title="Exception occurred:", description= es).uniform(interaction))
     # else:
         # await interaction.followup.send(embed=Embed(title="Exception occurred", description='Contact the bot owner(s) for more information.', ).uniform(interaction))
 
@@ -283,7 +283,8 @@ class game_wordle():
         await this.interaction.edit_original_response(embed=embed, view=this.play())
     
     @staticmethod
-    async def compare_word(word: str, secret: str):
+    async def compare_word(word: str, secret: str, forced: bool = False):
+        "This method is used to compare 2 words."
         'response format: {"invalid": invalid, "invalid_type": invalid_type, "comparision": comparision, "efficiency": efficiency, "won": won}'
         "invalid types: 0 - nothing; 2 - contain non-letter; 3 - not in the dictionary"
         invalid = False
@@ -292,17 +293,20 @@ class game_wordle():
         won = False
         efficiency = 0 # 0 -> 100
         while True:
-            if any(letter not in "abcdefghijklmnopqrstuvwxyz" for letter in word): invalid_type = 2; invalid = True; break
-            querystring = {"term": word}
-            headers = {
-                "X-RapidAPI-Key": configurations.rapidapi_key,
-                "X-RapidAPI-Host": "mashape-community-urban-dictionary.p.rapidapi.com"
-            }
-            async with ClientSession(headers = headers) as session:
-                async with session.get(f'https://mashape-community-urban-dictionary.p.rapidapi.com/define', params = querystring) as response:
-                    data = await response.json()
-                    if len(data.get("list", [])) == 0: invalid_type = 3; invalid = True; break
-            # compare the word (valid) to the secret word:-> NEED TO FIX
+            if not forced:
+                # check if the word contain non-alphabet characters
+                if any(letter not in "abcdefghijklmnopqrstuvwxyz" for letter in word): invalid_type = 2; invalid = True; break
+                # check if the word is not in the dictionary
+                querystring = {"term": word}
+                headers = {
+                    "X-RapidAPI-Key": configurations.rapidapi_key,
+                    "X-RapidAPI-Host": "mashape-community-urban-dictionary.p.rapidapi.com"
+                }
+                async with ClientSession(headers = headers) as session:
+                    async with session.get(f'https://mashape-community-urban-dictionary.p.rapidapi.com/define', params = querystring) as response:
+                        data = await response.json()
+                        if len(data.get("list", [])) == 0: invalid_type = 3; invalid = True; break
+            # compare the word (valid) to the secret word
             if word == secret: won = True; efficiency = 100; break
             word = list(word)
             temp = list(word)[:]
@@ -323,6 +327,7 @@ class game_wordle():
     
     @staticmethod
     async def get_word():
+        "This method is used to get a random 5 letter word from the API"
         word = None
         success = True
         async with ClientSession() as session:
@@ -355,7 +360,7 @@ class game_wordle():
         embed.add_field(name = "*Analysis*", value = f"""- *Secret word difficulty*: *<comming soon>*\n- *Guess efficiency*: ```{underline.join(map(lambda x: str(x) + "%", this.tried_efficiency))}```""")
         embed.set_footer(text = f'Requested by {this.interaction.user.name}#{this.interaction.user.discriminator}', icon_url=this.interaction.user.avatar)
         await this.interaction.edit_original_response(embed = embed, view = None)
-
+    
     class guessModal(Modal, title='Guess your Wordle'):
         def __init__(self, main) -> None:
             super().__init__()
@@ -366,12 +371,13 @@ class game_wordle():
             guess = str(self.word).lower()
             compared = await self.main.compare_word(guess, self.main.secret_word)
             if compared.get("invalid", True):
-                if compared["invalid_type"] == 1:
-                    error_msg = "Your guess should be a 5-letter word."
-                elif compared["invalid_type"] == 2:
-                    error_msg = "Your guess should only contain letters."
-                elif compared["invalid_type"] == 3:
-                    error_msg = "Your guess-ed word is not in the dictionary."
+                match compared["invalid_type"]:
+                    case 1:
+                        error_msg = "Your guess should be a 5-letter word."
+                    case 2:
+                        error_msg = "Your guess should only contain letters."
+                    case 3:
+                        error_msg = "Your guess-ed word is not in the dictionary."
                 await interaction.followup.send(error_msg, ephemeral = True)
                 return
             self.main.tries -= 1
@@ -429,10 +435,11 @@ class game(Group):
         if maintenance_status:
             await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction))
             return False
-        i = (await check_user_whitelist(user = interaction.user.id))
-        l = (interaction.user.id in configurations.owner_ids)
-        k = interaction.guild_id is not None
-        p = interaction.guild_id in [guild.id for guild in client.guilds]
+        i = (await check_user_whitelist(user = interaction.user.id)) # check in the API
+        l = (interaction.user.id in configurations.owner_ids) # overwrite, check if the user is administator
+        k = interaction.guild_id is not None # check if the command is used in a server
+        p = interaction.guild_id in [guild.id for guild in client.guilds] # check if the bot is in the server
+
         if l:
             return True
         elif not k:
@@ -441,10 +448,10 @@ class game(Group):
         elif not p:
             await interaction.followup.send(embed=Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').uniform(interaction))
             return False
-        elif not (i or l):
+        elif not i:
             await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').uniform(interaction))
             return False
-        return True
+
     @command(name='wordle', description='BETA - Play Wordle in Discord.')
     @describe(silent = 'Whether you want the output to be sent to you alone or not')
     async def wordle(self, interaction: Interaction, silent: bool = False):
@@ -614,17 +621,17 @@ class net(Group):
             fieldlist = [
                 ("IP", ipdata.get("ip", None)),
                 ("Data Center", ipdata.get("data_center", None)),
-                ("Continent", f'{ipdata.get("geo", {}).get("continent", "_")} | {ipdata.get("geo", {}).get("continent_code", "_")}'),
-                ("Country", f'{ipdata.get("geo", {}).get("country", "_")} | {ipdata.get("geo", {}).get("country_code", "_")} {ipdata.get("geo", {}).get("country_flag_emoji", "?")}'),
+                ("Continent", f'{ipdata.get("geo", {}).get("continent", "null")} | {ipdata.get("geo", {}).get("continent_code", "null")}'),
+                ("Country", f'{ipdata.get("geo", {}).get("country", "null")} | {ipdata.get("geo", {}).get("country_code", "null")} {ipdata.get("geo", {}).get("country_flag_emoji", "?")}'),
                 ("City", ipdata.get("geo", {}).get("city", None)),
-                ("Region", f'{ipdata.get("geo", {}).get("region", "_")} | {ipdata.get("geo", {}).get("region_code", "_")}'),
+                ("Region", f'{ipdata.get("geo", {}).get("region", "null")} | {ipdata.get("geo", {}).get("region_code", "null")}'),
                 ("\u200B", "\n"),  # blank field separator
                 ("Network Route", ipdata.get("network", {}).get("route", None)),
                 ("AS Number", ipdata.get("network", {}).get("as_number", None)),
-                ("AS Organization", f'{ipdata.get("network", {}).get("as_org", "_")} | {ipdata.get("network", {}).get("as_org_alt", "?")}')
+                ("AS Organization", f'{ipdata.get("network", {}).get("as_org", "null")} | {ipdata.get("network", {}).get("as_org_alt", "?")}')
             ]
         for field_name, field_value in fieldlist:
-            if field_value is None: continue
+            if field_value is None or "null" in field_value: continue
             embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=False)
         embed.uniform(interaction)
         await interaction.followup.send(embed = embed, ephemeral=silent)
@@ -650,8 +657,11 @@ class net(Group):
         await msg.edit(embed=Embed(title="Finished", description="Your request has been processed.").uniform(interaction))
         if data["success"]:
             redirects = data.get("redirect_list", [])
-            embed = Embed(title='Success',description=f'Here is the list of of redirects got from {url} \n||*(took {global_elapsed}ms globally, {data["api_elapsed"]}ms for the API to work, elapsed times including requested delays)*||', ).uniform(interaction)
-            embed.add_field(name = 'Redirects', value = f'[{redirects[0]}]' + '\n' + '\n-> [passive]'.join([f'({i})' for i in redirects[1:-1]]) + '\n=> ' + redirects[-1])
+            if len(redirects) > 1 :
+                embed = Embed(title='Success',description=f'Here is the list of of redirects got from {url} \n||*(took {global_elapsed}ms globally, {data["api_elapsed"]}ms for the API to work, elapsed times including requested delays)*||', ).uniform(interaction)
+                embed.add_field(name = 'Redirects', value = f'[{redirects[0]}]' + '\n' + '\n-> [passive]'.join([f'({i})' for i in redirects[1:-1]]) + '\n=> ' + redirects[-1])
+            else:
+                embed = Embed(title='Success', description="There's no redirect for this URL.").uniform(interaction)
             await interaction.followup.send(ephemeral = silent, embed=embed)
         else:
             await interaction.followup.send(ephemeral = silent, embed=Embed(title='Error', description=f'Failed to get redirects from the URL, ask developers for more details... [API error?]').uniform(interaction))   
@@ -675,12 +685,7 @@ async def uptime(interaction: Interaction):
 BOOT
 -------------------------------------------------
 """
-discord_logger = logging.getLogger('discord')
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-ch.setFormatter(CustomFormatter())
-discord_logger.addHandler(ch)
-del discord_logger
+
 
 def build_mode():
     with open('version.json', 'w+') as f:
@@ -697,7 +702,7 @@ def run():
         ka()
         ilog('Flask server is ready!', 'init', 'info')
     ilog('Starting Discord client...', 'init', 'info')
-    client.run(configurations.bot_token)
+    client.run(token = configurations.bot_token, log_formatter=CustomFormatter())
 build = not configurations.not_builder
 if __name__ == '__main__':
     if not build:
