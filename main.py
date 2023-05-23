@@ -38,22 +38,22 @@ class MyClient(Client):
         maintenance_status = configurations.default_maintenance_status
         unix_uptime = round(time())
         # do syncs
-        ilog("Syncing commands to the main guild...", 'init', 'info')
+        ilog("Syncing commands to the main guild...", 'client.setup_hook', 'info')
         # self.tree.copy_global_to(guild = Object(id=configurations.owner_guild_id))
         await self.tree.sync(guild = Object(id=configurations.owner_guild_id))
-        ilog("Done! Bot will be ready soon", 'init', 'info')
+        ilog("Done! Bot will be ready soon", 'client.setup_hook', 'info')
         await asyncio.sleep(3)
         return
     async def on_ready(self):
         "Set status, Return bot statistics"
-        ilog("Bot is ready. Getting informations...", 'init', 'info')
+        ilog("Bot is ready. Getting informations...", 'client.on_ready', 'info')
         await self.change_presence(activity=Game('starting...'), status=Status.idle)
         await asyncio.sleep(2)
-        ilog(f"Bot is currently on version {configurations.bot_version}", 'init', 'info')
-        ilog(str(self.user) + ' has connected to Discord.', 'init', 'info')
+        ilog(f"Bot is currently on version {configurations.bot_version}", 'client.on_ready', 'info')
+        ilog(str(self.user) + ' has connected to Discord.', 'client.on_ready', 'info')
         guilds_num = len(self.guilds)
         members_num = len(set(member for guild in self.guilds for member in guild.members))
-        ilog('Connected to ' + str(guilds_num) + ' guilds and ' + str(members_num)  + ' users.', 'init', 'info')
+        ilog('Connected to ' + str(guilds_num) + ' guilds and ' + str(members_num)  + ' users.', 'client.on_ready', 'info')
         await asyncio.sleep(5)
         await self.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
 
@@ -61,6 +61,7 @@ intents = Intents.default()
 intents.members = True # Requires verification
 client = MyClient(intents=intents)
 tree = client.tree
+
 
 class Embed(discordEmbed):
     def uniform(self, interaction):
@@ -83,16 +84,16 @@ APPLICATION ERROR HANDLER
 @tree.error
 async def on_error(interaction: Interaction, error):
     if interaction.user.id not in configurations.owner_ids:
-        await interaction.followup.send(embed=Embed(title="Exception occurred:", description= 'Ask the developer of the bot for more information.').uniform(interaction))
+        await interaction.followup.send(embed=Embed(title="Exception occurred:", description= 'Ask the developer of the bot for more information.').uniform(interaction)) if not interaction.is_expired() else ilog("discord.Interaction expired on exception message.", flag = "command", logtype = 'warning')
         return
     full_err = traceback.format_exc()
     cleaned = clean_traceback(full_err)
     minlog = cleaned[:cleaned.rfind('\n')]
     minlog_under800 = minlog[-800:] 
-    es = ('Check the console for more information.' if len(minlog) > 1000 else '') + f"```py\n{('...' if minlog_under800 != minlog else '') + minlog_under800}```" + f"```py\n{cleaned.splitlines()[-1]}```"
+    es = ('Check the console for more information.' if len(minlog) > 800 else '') + f"```py\n{('...' if minlog_under800 != minlog else '') + minlog_under800}```" + f"```py\n{cleaned.splitlines()[-1]}```"
     # if (i:=interaction.user.id) in configurations.owner_guild_id or i in get_whitelist():
     ilog('Exception in a application command: \n' + full_err + '> END OF TRACEBACK <', logtype= 'error', flag = 'command')
-    await interaction.followup.send(embed=Embed(title="Exception occurred:", description= es).uniform(interaction))
+    await interaction.followup.send(embed=Embed(title="Exception occurred:", description= es).uniform(interaction)) if not interaction.is_expired() else ilog("discord.Interaction expired on exception message.", flag = "command", logtype = 'warning')
     # else:
         # await interaction.followup.send(embed=Embed(title="Exception occurred", description='Contact the bot owner(s) for more information.', ).uniform(interaction))
 
@@ -130,16 +131,17 @@ async def sync(interaction: Interaction, delay: Range[int, 0, 60] = 30, silent: 
     maintenance_status = configurations.default_maintenance_status
     await asyncio.sleep(20)
     await interaction.followup.send(embed=Embed(title="Command tree synced", description='Successfully synced the global command tree to all guilds').uniform(interaction), ephemeral=silent)
-    await client.change_presence(activity=Game('synced. reloading...'), status=Status.dnd)
+    await client.change_presence(activity=Game('synced. reloa`ding...'), status=Status.dnd)
     await asyncio.sleep(5)
     await client.change_presence(activity=Game('version ' + configurations.bot_version + (' [outdated]' if not check_bot_version(configurations.bot_version) else "")), status=Status.online)
 
 class sys(Group):
     @staticmethod
-    async def is_authorized(interaction: Interaction):
+    async def is_authorized(interaction: Interaction, followup: bool = True):
         i = interaction.user.id in configurations.owner_ids
         if not i:
-            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").uniform(interaction), ephemeral=True)
+            embed = Embed(title="Unauthorized", description="You are not allowed to use this command.").uniform(interaction)
+            await interaction.followup.send(embed=embed, ephemeral=True) if followup else await interaction.response.send_message(embed=embed, ephemeral=True)
         return i
     class evalModal(Modal, title='System eval()'):
             def __init__(self, main) -> None:
@@ -149,7 +151,6 @@ class sys(Group):
             script = TextInput(label = 'Enter the script', style = TextStyle.paragraph, max_length = 2000, required=True, placeholder="Enter your script here...")
             async def on_submit(self, interaction: Interaction):
                 await interaction.response.defer()
-                if not await self.main.is_authorized(interaction): return
                 guess = str(self.script)
                 self.result = guess
                 self.stop()
@@ -158,6 +159,7 @@ class sys(Group):
     @describe(silent = 'Whether you want the output to be sent to you alone or not', script = 'The script you want to execute, leave blank if you want a modal ask for the code. (which can be multi-line-ed)', awaited = '(default: False) If you want to turn the script into a coroutine that runs asynchronously')
     async def scripteval(self, interaction: Interaction, script: str = '', awaited: bool = False, silent: bool = False):
         if script == '':
+            if not await self.is_authorized(interaction, False): return
             modal = self.evalModal(self)
             await interaction.response.send_modal(modal)
             await modal.wait()
