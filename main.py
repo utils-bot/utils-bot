@@ -128,7 +128,7 @@ async def sync(interaction: Interaction, delay: Range[int, 0, 60] = 30, silent: 
     await tree.sync()
     ilog(f'Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}', logtype = 'info', flag = 'tree')
     maintenance_status = configurations.default_maintenance_status
-    await asyncio.sleep(10)
+    await asyncio.sleep(20)
     await interaction.followup.send(embed=Embed(title="Command tree synced", description='Successfully synced the global command tree to all guilds').uniform(interaction), ephemeral=silent)
     await client.change_presence(activity=Game('synced. reloading...'), status=Status.dnd)
     await asyncio.sleep(5)
