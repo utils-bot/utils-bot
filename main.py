@@ -144,16 +144,16 @@ class sys(Group):
             await interaction.followup.send(embed=embed, ephemeral=True) if followup else await interaction.response.send_message(embed=embed, ephemeral=True)
         return i
     class evalModal(Modal, title='System eval()'):
-            def __init__(self, main) -> None:
-                super().__init__()
-                self.main = main
-                self.result = ""
-            script = TextInput(label = 'Enter the script', style = TextStyle.paragraph, max_length = 2000, required=True, placeholder="Enter your script here...")
-            async def on_submit(self, interaction: Interaction):
-                await interaction.response.defer()
-                guess = str(self.script)
-                self.result = guess
-                self.stop()
+        def __init__(self, main) -> None:
+            super().__init__()
+            self.main = main
+            self.result = ""
+        script = TextInput(label = 'Enter the script', style = TextStyle.paragraph, max_length = 2000, required=True, placeholder="Enter your script here...")
+        async def on_submit(self, interaction: Interaction):
+            await interaction.response.defer()
+            guess = str(self.script)
+            self.result = guess
+            self.stop()
 
     @command(name='eval', description='system - execute python scripts via eval()')
     @describe(silent = 'Whether you want the output to be sent to you alone or not', script = 'The script you want to execute, leave blank if you want a modal ask for the code. (which can be multi-line-ed)', awaited = '(default: False) If you want to turn the script into a coroutine that runs asynchronously')
