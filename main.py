@@ -2,11 +2,12 @@
 Check .env.example to setup the bot.
 ---------------------------------------------"""
 
-from discord import Intents, Client, Interaction, Object, Embed as discordEmbed, File, Game, Status, Member, Webhook, ButtonStyle, TextStyle
+from discord import Intents, Client, Interaction, Object, Embed as discordEmbed, File, Game, Status, Member, Webhook, ButtonStyle, TextStyle, Activity, ActivityType
 from discord.app_commands import CommandTree, Group, command, Choice, choices, describe, Range
 from discord.ui import button, View, Modal, Button, TextInput
+from discord.ext import tasks
 from jsondb import check_bot_version, get_user_whitelist, update_user_whitelist, check_user_whitelist
-import logging, typing, traceback, asyncio, json, sentry_sdk
+import logging, typing, traceback, asyncio, json, sentry_sdk, re
 from aiohttp import ClientSession
 from logger import CustomFormatter, ilog
 from os import system
@@ -14,6 +15,8 @@ from time import time
 from keep_alive import ka
 from io import BytesIO
 from configs import configurations
+from datetime import datetime
+from pyotp import TOTP
 
 """
 -------------------------------------------------
@@ -28,8 +31,23 @@ class MyClient(Client):
         super().__init__(intents=intents)
         self.tree = CommandTree(self)
         return
+    @tasks.loop(seconds=30)
+    async def presence_update(self):
+        "Update bot presence"
+        global unix_uptime
+        # Block this loop until the bot is ready
+        await self.wait_until_ready()
+        # Do loops
+        await self.change_presence(activity=Activity(type=ActivityType.watching, name=f'{len(self.guilds)} guilds'), status=Status.online)
+        await asyncio.sleep(30)
+        await self.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
+        await asyncio.sleep(30)
+        # change presence to latency {round(client.latency*1000)}ms
+        await self.change_presence(activity=Activity(type=ActivityType.watching, name=f'latency {round(self.latency*1000)}ms'), status=Status.online)
+    def taskloops(self): return [self.presence_update]
+
     async def setup_hook(self):
-        "Do value resets, pre-sync to development guild"
+        "Do value resets, pre-sync to development guild, start loop tasks"
         # varible reset
         global unix_uptime
         global global_ratelimit
@@ -41,9 +59,15 @@ class MyClient(Client):
         ilog("Syncing commands to the main guild...", 'client.setup_hook', 'info')
         # self.tree.copy_global_to(guild = Object(id=configurations.owner_guild_id))
         await self.tree.sync(guild = Object(id=configurations.owner_guild_id))
+        # start looptasks
+        ilog("Starting loop tasks...", 'client.setup_hook', 'info')
+        try: 
+            for task in self.taskloops(): task.start()
+        except BaseException: pass
         ilog("Done! Bot will be ready soon", 'client.setup_hook', 'info')
         await asyncio.sleep(3)
         return
+    
     async def on_ready(self):
         "Set status, Return bot statistics"
         ilog("Bot is ready. Getting informations...", 'client.on_ready', 'info')
@@ -53,12 +77,11 @@ class MyClient(Client):
         ilog(str(self.user) + ' has connected to Discord.', 'client.on_ready', 'info')
         guilds_num = len(self.guilds)
         members_num = len(set(member for guild in self.guilds for member in guild.members))
-        ilog('Connected to ' + str(guilds_num) + ' guilds and ' + str(members_num)  + ' users.', 'client.on_ready', 'info')
+        ilog('Connected to ' + str(guilds_num) + ' guilds', 'client.on_ready', 'info')
         await asyncio.sleep(5)
         await self.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
 
 intents = Intents.default()
-intents.members = True # Requires verification
 client = MyClient(intents=intents)
 tree = client.tree
 
@@ -118,23 +141,33 @@ BASE COMMANDS
 @describe(silent = 'Whether you want the output to be sent to you alone or not')
 async def sync(interaction: Interaction, delay: Range[int, 0, 60] = 30, silent: bool = False):
     global maintenance_status
+    elapsed = time()
     await interaction.response.defer(ephemeral=silent)
     if interaction.user.id not in configurations.owner_ids:
         await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").uniform(interaction), ephemeral=True)
         return
     await interaction.followup.send(embed=Embed(title="Syncing job requested", description='A sync job for this bot has been queued. All functions of the bot will be disabled to prevent ratelimit.').uniform(interaction), ephemeral=silent)
     await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
+    ilog(f'Sync job requested, working on the sync...', logtype = 'warning', flag = 'tree')
+    ilog(f'Locking the bot', logtype = 'info', flag = 'tree sync')
     maintenance_status = True
+    ilog(f'Canceling looptasks', logtype = 'info', flag = 'tree sync')
+    for task in client.taskloops(): task.cancel()
+    ilog(f'Waiting for anti-ratelimit', logtype = 'info', flag = 'tree sync')
     await asyncio.sleep(delay)
+    ilog(f'Sync-ing', logtype = 'warning', flag = 'tree sync')
     await tree.sync()
-    ilog(f'Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}', logtype = 'info', flag = 'tree')
+    ilog(f'Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}#{interaction.user.discriminator})', logtype = 'warning', flag = 'tree')
+    ilog('Unlocking the bot', logtype = 'info', flag = 'tree sync')
     maintenance_status = configurations.default_maintenance_status
     await asyncio.sleep(20)
+    ilog('Restarting looptasks', logtype = 'info', flag = 'tree sync')
+    for task in client.taskloops(): task.start()
     await interaction.followup.send(embed=Embed(title="Command tree synced", description='Successfully synced the global command tree to all guilds').uniform(interaction), ephemeral=silent)
-    await client.change_presence(activity=Game('synced. reloa`ding...'), status=Status.dnd)
-    await asyncio.sleep(5)
-    await client.change_presence(activity=Game('version ' + configurations.bot_version + (' [outdated]' if not check_bot_version(configurations.bot_version) else "")), status=Status.online)
-
+    await client.change_presence(activity=Game('synced. reloading...'), status=Status.dnd)
+    elapsed = time() - elapsed
+    elapsed = int(elapsed * 1000)
+    ilog(f'Finished syncing in {elapsed}ms', logtype = 'info', flag = 'tree sync')
 class sys(Group):
     @staticmethod
     async def is_authorized(interaction: Interaction, followup: bool = True):
@@ -369,7 +402,7 @@ class game_wordle():
         embed = Embed(title="Wordle")
         embed.description = f"**You won with {this.tries} trie(s) left!** :heart:\nThe secret word was: `{this.secret_word}`\nYour guesses: ```\n" + "\n".join(this.tried) + "```"
         underline = "\n"
-        embed.add_field(name = "*Analysis*", value = f"""- *Secret word difficulty*: *<comming soon>*\n- *Guess efficiency*: ```{underline.join(map(lambda x: str(x) + "%", this.tried_efficiency))}```""")
+        embed.add_field(name = "*Analysis*", value = f"""- *Secret word difficulty*: *<comming soon>*\n- *Guess efficiency*: \n```{underline.join(map(lambda x: str(x) + "%", this.tried_efficiency))}```""")
         embed.set_footer(text = f'Requested by {this.interaction.user.name}#{this.interaction.user.discriminator}', icon_url=this.interaction.user.avatar)
         await this.interaction.edit_original_response(embed = embed, view = None)
         # GAME ENdED
@@ -455,22 +488,18 @@ class game(Group):
         if maintenance_status:
             await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction))
             return False
-        i = (await check_user_whitelist(user = interaction.user.id)) # check in the API
-        l = (interaction.user.id in configurations.owner_ids) # overwrite, check if the user is administator
-        k = interaction.guild_id is not None # check if the command is used in a server
-        p = interaction.guild_id in [guild.id for guild in client.guilds] # check if the bot is in the server
-
-        if l:
+        if interaction.user.id in configurations.owner_ids:
             return True
-        elif not k:
+        elif not interaction.guild_id is not None:
             await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.').uniform(interaction))
             return False
-        elif not p:
+        elif not interaction.guild_id in [guild.id for guild in client.guilds]:
             await interaction.followup.send(embed=Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').uniform(interaction))
             return False
-        elif not i:
+        elif not await check_user_whitelist(user = interaction.user.id):
             await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').uniform(interaction))
             return False
+        return True
 
     @command(name='wordle', description='BETA - Play Wordle in Discord.')
     @describe(silent = 'Whether you want the output to be sent to you alone or not')
@@ -484,25 +513,51 @@ class game(Group):
 
 tree.add_command(game())
 
+class tool(Group):
+    @staticmethod
+    async def is_authorized(interaction: Interaction):
+        if maintenance_status:
+            await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction))
+            return False
+        if interaction.user.id in configurations.owner_ids:
+            return True
+        elif not interaction.guild_id is not None:
+            await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.').uniform(interaction))
+            return False
+        elif not interaction.guild_id in [guild.id for guild in client.guilds]:
+            await interaction.followup.send(embed=Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').uniform(interaction))
+            return False
+        elif not await check_user_whitelist(user = interaction.user.id):
+            await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').uniform(interaction))
+            return False
+        return True
+    @staticmethod
+    def getTOTP(secret: str):
+        return TOTP(secret).now()
+    @command(name='totp', description='BETA - Instantly generate a TOTP code from your secret.') 
+    @describe(silent = 'Whether you want the output to be sent to you alone or not', secret = 'The secret key for TOTP')
+    async def totp(self, interaction: Interaction, secret: str, silent: bool = True):
+        await interaction.response.defer()
+        if not await self.is_authorized(interaction): return
+        await interaction.followup.send(embed=Embed(title='TOTP', description=f'`{self.getTOTP(secret)}`').uniform(interaction), ephemeral=silent)
+
+tree.add_command(tool())
+
 class net(Group):
     @staticmethod
     async def is_authorized(interaction: Interaction):
         if maintenance_status:
             await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction))
             return False
-        i = (await check_user_whitelist(user = interaction.user.id))
-        l = (interaction.user.id in configurations.owner_ids)
-        k = interaction.guild_id is not None
-        p = interaction.guild_id in [guild.id for guild in client.guilds]
-        if l:
+        if interaction.user.id in configurations.owner_ids:
             return True
-        elif not k:
+        elif not interaction.guild_id is not None:
             await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.').uniform(interaction))
             return False
-        elif not p:
+        elif not interaction.guild_id in [guild.id for guild in client.guilds]:
             await interaction.followup.send(embed=Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').uniform(interaction))
             return False
-        elif not (i or l):
+        elif not await check_user_whitelist(user = interaction.user.id):
             await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').uniform(interaction))
             return False
         return True
@@ -579,7 +634,15 @@ class net(Group):
             await debugmsg.edit(embed = debugem)
             break
         return {"success": success, "image_data": image_data, "error": error, "api_elapsed": api_elapsed}
-    
+    @staticmethod
+    async def get_domaininfo(url: str, apikey: configurations = configurations.webresolverapi):
+        async with ClientSession() as session:
+            async with session.get(f'https://webresolver.nl/api.php?key={apikey}&action=dns&string={url}') as response:
+                dns = await response.text()
+            async with session.get(f'https://webresolver.nl/api.php?key={apikey}&action=geoip&string={url}') as response:
+                geoip = await response.text()
+        return dns, geoip
+
     #@command(name='rayso', description='BETA - Create beautiful images of your code using ray.so')
     #@describe(title="The title of the code snippet", theme="The color scheme of the code you want to use", background="Whether you want a background or not", darkMode="Whether you want dark mode or not", padding="The padding around the content of the code snippet", language="The language the code is in", silent="Whether you want the output to be sent to you alone or not")
     #@choices(theme=[Choice(value=i, name=k) for i, k in [('breeze', 'Breeze'), ('candy', 'Candy'), ('crimson', 'Crimson'), ('falcon', 'Falcon'), ('meadow', 'Meadow'), ('midnight', 'Midnight'), ('raindrop', 'Raindrop'), ('sunset', 'Sunset')]], padding=[Choice(value=i, name=k) for i, k in [(16, 'small: 16'), (32, 'medium: 32'), (64, 'large: 64'), (128, 'xtralarge: 128')]], language=None)
@@ -652,11 +715,11 @@ class net(Group):
                 ("AS Organization", f'{ipdata.get("network", {}).get("as_org", "null")} | {ipdata.get("network", {}).get("as_org_alt", "?")}')
             ]
         for field_name, field_value in fieldlist:
-            if field_value is None or "null" in field_value: continue
+            if field_value is None or "null" in str(field_value): continue
             embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=False)
         embed.uniform(interaction)
         await interaction.followup.send(embed = embed, ephemeral=silent)
-    @command(name = 'unshort_url', description='Capture redirects from a URL and return the final URL.')
+    @command(name = 'unshortener', description='Capture redirects from a URL and return the final URL.')
     @describe(url = "The URL you want to unshorten.", silent = 'Whether you want the output to be sent to you alone or not')
     async def unshorten_url(self, interaction: Interaction, url: str, silent: bool = False):
         await interaction.response.defer(ephemeral=silent)
@@ -677,15 +740,20 @@ class net(Group):
         global_elapsed = round(1000*(time() - els))
         await msg.edit(embed=Embed(title="Finished", description="Your request has been processed.").uniform(interaction))
         if data["success"]:
-            redirects = data.get("redirect_list", [])
+            redirects = set(data.get("redirect_list", []))
             if len(redirects) > 1 :
-                embed = Embed(title='Success',description=f'Here is the list of of redirects got from {url} \n||*(took {global_elapsed}ms globally, {data["api_elapsed"]}ms for the API to work, elapsed times including requested delays)*||', ).uniform(interaction)
-                embed.add_field(name = 'Redirects', value = f'[{redirects[0]}]' + '\n' + '\n-> [passive]'.join([f'({i})' for i in redirects[1:-1]]) + '\n=> ' + redirects[-1])
+                embed = Embed(title='Success',description=f'Here is the information you need got from {url} \n||*(took {global_elapsed}ms globally, {data["api_elapsed"]}ms for the API to work, elapsed times including requested delays)*||', ).uniform(interaction)
+                embed.add_field(name = 'Final URL', value = f'**{redirects[-1]}**')
+                if len(redirects) != 2:
+                    embed.add_field(name = 'Traceroute', value = f'[{redirects[0]}]' + '\n' + '\n-> [passive]'.join([f'({i})' for i in redirects[1:-1]]) + '\n=> ' + redirects[-1])
+                else:
+                    embed.add_field(name = 'Traceroute', value = f'[{redirects[0]}]' + '\n=> ' + redirects[-1])
             else:
                 embed = Embed(title='Success', description="There's no redirect for this URL.").uniform(interaction)
             await interaction.followup.send(ephemeral = silent, embed=embed)
         else:
             await interaction.followup.send(ephemeral = silent, embed=Embed(title='Error', description=f'Failed to get redirects from the URL, ask developers for more details... [API error?]').uniform(interaction))   
+
 
 tree.add_command(net())
 

@@ -19,3 +19,4 @@ class configurations:
     rapidapi_key = environ.get("RAPIDAPI_KEY", "APIkey")
     unshortensecret = environ.get("UNSHORTEN_API_SECRET", "apikey_goes_here")
     unshortenapi = environ.get("UNSHORTEN_API_URL", "https://example.com/replace/with/your/own/endpoint/")
+    webresolverapi = environ.get("WEBRESOLVERNL_API_KEY", "replace_with_your_own_api_key")
