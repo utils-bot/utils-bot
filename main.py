@@ -740,7 +740,7 @@ class net(Group):
         global_elapsed = round(1000*(time() - els))
         await msg.edit(embed=Embed(title="Finished", description="Your request has been processed.").uniform(interaction))
         if data["success"]:
-            redirects = set(data.get("redirect_list", []))
+            redirects = data.get("redirect_list", [])
             if len(redirects) > 1 :
                 embed = Embed(title='Success',description=f'Here is the information you need got from {url} \n||*(took {global_elapsed}ms globally, {data["api_elapsed"]}ms for the API to work, elapsed times including requested delays)*||', ).uniform(interaction)
                 embed.add_field(name = 'Final URL', value = f'**{redirects[-1]}**')
