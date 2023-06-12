@@ -2,11 +2,12 @@
 Check .env.example to setup the bot.
 ---------------------------------------------"""
 
-from discord import Intents, Client, Interaction, Object, Embed as discordEmbed, File, Game, Status, Member, Webhook, ButtonStyle, TextStyle
+from discord import Intents, Client, Interaction, Object, Embed as discordEmbed, File, Game, Status, Member, Webhook, ButtonStyle, TextStyle, Activity, ActivityType
 from discord.app_commands import CommandTree, Group, command, Choice, choices, describe, Range
 from discord.ui import button, View, Modal, Button, TextInput
+from discord.ext import tasks
 from jsondb import check_bot_version, get_user_whitelist, update_user_whitelist, check_user_whitelist
-import logging, typing, traceback, asyncio, json, sentry_sdk
+import logging, typing, traceback, asyncio, json, sentry_sdk, re
 from aiohttp import ClientSession
 from logger import CustomFormatter, ilog
 from os import system
@@ -14,6 +15,8 @@ from time import time
 from keep_alive import ka
 from io import BytesIO
 from configs import configurations
+from datetime import datetime
+from pyotp import TOTP
 
 """
 -------------------------------------------------
@@ -22,14 +25,29 @@ DEFINING VARS
 """
 
 
-intents = Intents.default()
-intents.members = True
+
 class MyClient(Client):
-    def __init__(self, *, intents: Intents) -> None:
+    def __init__(self, *, intents: Intents = Intents.default()) -> None:
         super().__init__(intents=intents)
         self.tree = CommandTree(self)
         return
+    @tasks.loop(seconds=30)
+    async def presence_update(self):
+        "Update bot presence"
+        global unix_uptime
+        # Block this loop until the bot is ready
+        await self.wait_until_ready()
+        # Do loops
+        await self.change_presence(activity=Activity(type=ActivityType.watching, name=f'{len(self.guilds)} guilds'), status=Status.online)
+        await asyncio.sleep(30)
+        await self.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
+        await asyncio.sleep(30)
+        # change presence to latency {round(client.latency*1000)}ms
+        await self.change_presence(activity=Activity(type=ActivityType.watching, name=f'latency {round(self.latency*1000)}ms'), status=Status.online)
+    def taskloops(self): return [self.presence_update]
+
     async def setup_hook(self):
+        "Do value resets, pre-sync to development guild, start loop tasks"
         # varible reset
         global unix_uptime
         global global_ratelimit
@@ -38,26 +56,35 @@ class MyClient(Client):
         maintenance_status = configurations.default_maintenance_status
         unix_uptime = round(time())
         # do syncs
-        ilog("Syncing commands to the main guild...", 'init', 'info')
+        ilog("Syncing commands to the main guild...", 'client.setup_hook', 'info')
         # self.tree.copy_global_to(guild = Object(id=configurations.owner_guild_id))
         await self.tree.sync(guild = Object(id=configurations.owner_guild_id))
-        ilog("Done! Bot will be ready soon", 'init', 'info')
+        # start looptasks
+        ilog("Starting loop tasks...", 'client.setup_hook', 'info')
+        try: 
+            for task in self.taskloops(): task.start()
+        except BaseException: pass
+        ilog("Done! Bot will be ready soon", 'client.setup_hook', 'info')
         await asyncio.sleep(3)
         return
+    
     async def on_ready(self):
-        ilog("Bot is ready. Getting informations...", 'init', 'info')
+        "Set status, Return bot statistics"
+        ilog("Bot is ready. Getting informations...", 'client.on_ready', 'info')
         await self.change_presence(activity=Game('starting...'), status=Status.idle)
         await asyncio.sleep(2)
-        ilog(f"Bot is currently on version {configurations.bot_version}", 'init', 'info')
-        ilog(str(self.user) + ' has connected to Discord.', 'init', 'info')
+        ilog(f"Bot is currently on version {configurations.bot_version}", 'client.on_ready', 'info')
+        ilog(str(self.user) + ' has connected to Discord.', 'client.on_ready', 'info')
         guilds_num = len(self.guilds)
         members_num = len(set(member for guild in self.guilds for member in guild.members))
-        ilog('Connected to ' + str(guilds_num) + ' guilds and ' + str(members_num)  + ' users.', 'init', 'info')
+        ilog('Connected to ' + str(guilds_num) + ' guilds', 'client.on_ready', 'info')
         await asyncio.sleep(5)
         await self.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
 
+intents = Intents.default()
 client = MyClient(intents=intents)
 tree = client.tree
+
 
 class Embed(discordEmbed):
     def uniform(self, interaction):
@@ -80,16 +107,16 @@ APPLICATION ERROR HANDLER
 @tree.error
 async def on_error(interaction: Interaction, error):
     if interaction.user.id not in configurations.owner_ids:
-        await interaction.followup.send(embed=Embed(title="Exception occurred:", description= 'Ask the developer of the bot for more information.').uniform(interaction))
+        await interaction.followup.send(embed=Embed(title="Exception occurred:", description= 'Ask the developer of the bot for more information.').uniform(interaction)) if not interaction.is_expired() else ilog("discord.Interaction expired on exception message.", flag = "command", logtype = 'warning')
         return
     full_err = traceback.format_exc()
     cleaned = clean_traceback(full_err)
     minlog = cleaned[:cleaned.rfind('\n')]
     minlog_under800 = minlog[-800:] 
-    es = ('Check the console for more information.' if len(minlog) > 1000 else '') + f"```py\n{('...' if minlog_under800 != minlog else '') + minlog_under800}```" + f"```py\n{cleaned.splitlines()[-1]}```"
+    es = ('Check the console for more information.' if len(minlog) > 800 else '') + f"```py\n{('...' if minlog_under800 != minlog else '') + minlog_under800}```" + f"```py\n{cleaned.splitlines()[-1]}```"
     # if (i:=interaction.user.id) in configurations.owner_guild_id or i in get_whitelist():
-    ilog('---Exception in a application command: ' + full_err + '--------------------end of exception--------------------', logtype= 'error', flag = 'command')
-    await interaction.followup.send(embed=Embed(title="Exception occurred:", description= es, ).uniform(interaction))
+    ilog('Exception in a application command: \n' + full_err + '> END OF TRACEBACK <', logtype= 'error', flag = 'command')
+    await interaction.followup.send(embed=Embed(title="Exception occurred:", description= es).uniform(interaction)) if not interaction.is_expired() else ilog("discord.Interaction expired on exception message.", flag = "command", logtype = 'warning')
     # else:
         # await interaction.followup.send(embed=Embed(title="Exception occurred", description='Contact the bot owner(s) for more information.', ).uniform(interaction))
 
@@ -114,48 +141,72 @@ BASE COMMANDS
 @describe(silent = 'Whether you want the output to be sent to you alone or not')
 async def sync(interaction: Interaction, delay: Range[int, 0, 60] = 30, silent: bool = False):
     global maintenance_status
+    elapsed = time()
     await interaction.response.defer(ephemeral=silent)
     if interaction.user.id not in configurations.owner_ids:
         await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").uniform(interaction), ephemeral=True)
         return
     await interaction.followup.send(embed=Embed(title="Syncing job requested", description='A sync job for this bot has been queued. All functions of the bot will be disabled to prevent ratelimit.').uniform(interaction), ephemeral=silent)
     await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
+    ilog(f'Sync job requested, working on the sync...', logtype = 'warning', flag = 'tree')
+    ilog(f'Locking the bot', logtype = 'info', flag = 'tree sync')
     maintenance_status = True
+    ilog(f'Canceling looptasks', logtype = 'info', flag = 'tree sync')
+    for task in client.taskloops(): task.cancel()
+    ilog(f'Waiting for anti-ratelimit', logtype = 'info', flag = 'tree sync')
     await asyncio.sleep(delay)
+    ilog(f'Sync-ing', logtype = 'warning', flag = 'tree sync')
     await tree.sync()
-    ilog(f'Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}', logtype = 'info', flag = 'tree')
+    ilog(f'Command tree synced via /sync by {interaction.user.id} ({interaction.user.display_name}#{interaction.user.discriminator})', logtype = 'warning', flag = 'tree')
+    ilog('Unlocking the bot', logtype = 'info', flag = 'tree sync')
     maintenance_status = configurations.default_maintenance_status
-    await asyncio.sleep(10)
+    await asyncio.sleep(20)
+    ilog('Restarting looptasks', logtype = 'info', flag = 'tree sync')
+    for task in client.taskloops(): task.start()
     await interaction.followup.send(embed=Embed(title="Command tree synced", description='Successfully synced the global command tree to all guilds').uniform(interaction), ephemeral=silent)
     await client.change_presence(activity=Game('synced. reloading...'), status=Status.dnd)
-    await asyncio.sleep(5)
-    await client.change_presence(activity=Game('version ' + configurations.bot_version + ' [outdated]' if not check_bot_version(configurations.bot_version) else ""), status=Status.online)
-
+    elapsed = time() - elapsed
+    elapsed = int(elapsed * 1000)
+    ilog(f'Finished syncing in {elapsed}ms', logtype = 'info', flag = 'tree sync')
 class sys(Group):
     @staticmethod
-    async def is_authorized(interaction: Interaction):
+    async def is_authorized(interaction: Interaction, followup: bool = True):
         i = interaction.user.id in configurations.owner_ids
         if not i:
-            await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").uniform(interaction), ephemeral=True)
+            embed = Embed(title="Unauthorized", description="You are not allowed to use this command.").uniform(interaction)
+            await interaction.followup.send(embed=embed, ephemeral=True) if followup else await interaction.response.send_message(embed=embed, ephemeral=True)
         return i
+    class evalModal(Modal, title='System eval()'):
+        def __init__(self, main) -> None:
+            super().__init__()
+            self.main = main
+            self.result = ""
+        script = TextInput(label = 'Enter the script', style = TextStyle.paragraph, max_length = 2000, required=True, placeholder="Enter your script here...")
+        async def on_submit(self, interaction: Interaction):
+            await interaction.response.defer()
+            guess = str(self.script)
+            self.result = guess
+            self.stop()
 
     @command(name='eval', description='system - execute python scripts via eval()')
-    @describe(silent = 'Whether you want the output to be sent to you alone or not', script = 'The script you want to execute', awaited = '(default: False) If you want to turn the script into a coroutine that runs asynchronously')
-    async def scripteval(self, interaction: Interaction, script: str, awaited: bool = False, silent: bool = False):
-        await interaction.response.defer(ephemeral=silent)
-        if not await self.is_authorized(interaction): return
+    @describe(silent = 'Whether you want the output to be sent to you alone or not', script = 'The script you want to execute, leave blank if you want a modal ask for the code. (which can be multi-line-ed)', awaited = '(default: False) If you want to turn the script into a coroutine that runs asynchronously')
+    async def scripteval(self, interaction: Interaction, script: str = '', awaited: bool = False, silent: bool = False):
+        if script == '':
+            if not await self.is_authorized(interaction, False): return
+            modal = self.evalModal(self)
+            await interaction.response.send_modal(modal)
+            await modal.wait()
+            script = modal.result
+        else:
+            await interaction.response.defer(ephemeral=silent)
+            if not await self.is_authorized(interaction): return
         await interaction.followup.send(embed=Embed(title='Executing...', description='Executing the script...').uniform(interaction), wait=True)
         await asyncio.sleep(0.5)
         ilog(f'{interaction.user.name}#{interaction.user.discriminator} ({interaction.user.id}) eval-ed: {script}', 'eval', 'warning')
-        script = script.encode()
-        if not awaited:
-            result = eval(script)
-        else:
-            result = await eval(script)
-        if not result:
-            await interaction.followup.send(ephemeral=silent, embed=Embed(title="Script executed", description='Script executed successfully, the result, might be `None` or too long to fill in here.').uniform(interaction))
-        else:
-            await interaction.followup.send(ephemeral=silent, embed=Embed(title="Result", description= "```py\n" + str(result) + "```", ).uniform(interaction))
+        if not awaited: result = eval(script)
+        else: result = await eval(script)
+        if not result: await interaction.followup.send(ephemeral=silent, embed=Embed(title="Script executed", description='Script executed successfully, the result, might be `None` or too long to fill in here.').uniform(interaction))
+        else: await interaction.followup.send(ephemeral=silent, embed=Embed(title="Result", description= "```py\n" + str(result) + "```", ).uniform(interaction))
     @command(name = 'guilds', description= 'system - list guilds that the bot are currently in.')
     @describe(silent = 'Whether you want the output to be sent to you alone or not')
     async def guilds(self, interaction: Interaction, silent: bool = True):
@@ -270,22 +321,23 @@ FEATURE COMMANDS (beta)
 class game_wordle():
     "This class is used for the command /game wordle; the only method should be used is .start() -> return the ui.View to the user"
     # TODO: analysis: word difficulty,  word length, word frequency...
-    def __init__(ego, interaction: Interaction) -> None:
-        ego.interaction = interaction
-        ego.tries = 6
-        ego.secret_word = None
-        ego.tried = []
-        ego.tried_efficiency = []
+    def __init__(this, interaction: Interaction) -> None:
+        this.interaction = interaction
+        this.tries = 6
+        this.secret_word = None
+        this.tried = []
+        this.tried_efficiency = []
 
-    async def gameplay(ego):
-        if ego.secret_word is None: ego.secret_word = (await ego.get_word()).get("word", "smhhh")
+    async def gameplay(this):
+        if this.secret_word is None: this.secret_word = (await this.get_word()).get("word", "smhhh")
         embed = Embed(title="Wordle")
-        embed.description = "Make a guess by click the green guess button below!\n`Your guesses:` ```\n" + "\n".join(ego.tried) + "```"
-        embed.set_footer(text = f'Requested by {ego.interaction.user.name}#{ego.interaction.user.discriminator}', icon_url=ego.interaction.user.avatar)
-        await ego.interaction.edit_original_response(embed=embed, view=ego.play())
+        embed.description = "Make a guess by click the green guess button below!\n`Your guesses:` ```\n" + "\n".join(this.tried) + "```"
+        embed.set_footer(text = f'Requested by {this.interaction.user.name}#{this.interaction.user.discriminator}', icon_url=this.interaction.user.avatar)
+        await this.interaction.edit_original_response(embed=embed, view=this.play())
     
     @staticmethod
-    async def compare_word(word: str, secret: str):
+    async def compare_word(word: str, secret: str, forced: bool = False):
+        "This method is used to compare 2 words."
         'response format: {"invalid": invalid, "invalid_type": invalid_type, "comparision": comparision, "efficiency": efficiency, "won": won}'
         "invalid types: 0 - nothing; 2 - contain non-letter; 3 - not in the dictionary"
         invalid = False
@@ -294,17 +346,20 @@ class game_wordle():
         won = False
         efficiency = 0 # 0 -> 100
         while True:
-            if any(letter not in "abcdefghijklmnopqrstuvwxyz" for letter in word): invalid_type = 2; invalid = True; break
-            querystring = {"term": word}
-            headers = {
-                "X-RapidAPI-Key": configurations.rapidapi_key,
-                "X-RapidAPI-Host": "mashape-community-urban-dictionary.p.rapidapi.com"
-            }
-            async with ClientSession(headers = headers) as session:
-                async with session.get(f'https://mashape-community-urban-dictionary.p.rapidapi.com/define', params = querystring) as response:
-                    data = await response.json()
-                    if len(data.get("list", [])) == 0: invalid_type = 3; invalid = True; break
-            # compare the word (valid) to the secret word:-> NEED TO FIX
+            if not forced:
+                # check if the word contain non-alphabet characters
+                if any(letter not in "abcdefghijklmnopqrstuvwxyz" for letter in word): invalid_type = 2; invalid = True; break
+                # check if the word is not in the dictionary
+                querystring = {"term": word}
+                headers = {
+                    "X-RapidAPI-Key": configurations.rapidapi_key,
+                    "X-RapidAPI-Host": "mashape-community-urban-dictionary.p.rapidapi.com"
+                }
+                async with ClientSession(headers = headers) as session:
+                    async with session.get(f'https://mashape-community-urban-dictionary.p.rapidapi.com/define', params = querystring) as response:
+                        data = await response.json()
+                        if len(data.get("list", [])) == 0: invalid_type = 3; invalid = True; break
+            # compare the word (valid) to the secret word
             if word == secret: won = True; efficiency = 100; break
             word = list(word)
             temp = list(word)[:]
@@ -325,6 +380,7 @@ class game_wordle():
     
     @staticmethod
     async def get_word():
+        "This method is used to get a random 5 letter word from the API"
         word = None
         success = True
         async with ClientSession() as session:
@@ -336,28 +392,28 @@ class game_wordle():
                     success = False
         return {"word": word, "success": success}
     
-    def start(ego) -> None:
-        return ego.startView(ego)
-    def play(ego) -> None:
-        return ego.gameplayView(ego)
-    def guess(ego) -> None:
-        return ego.guessModal(ego)
-    async def won(ego) -> None:
+    def start(this) -> None:
+        return this.startView(this)
+    def play(this) -> None:
+        return this.gameplayView(this)
+    def guess(this) -> None:
+        return this.guessModal(this)
+    async def won(this) -> None:
         embed = Embed(title="Wordle")
-        embed.description = f"**You won with {ego.tries} trie(s) left!** :heart:\nThe secret word was: `{ego.secret_word}`\nYour guesses: ```\n" + "\n".join(ego.tried) + "```"
+        embed.description = f"**You won with {this.tries} trie(s) left!** :heart:\nThe secret word was: `{this.secret_word}`\nYour guesses: ```\n" + "\n".join(this.tried) + "```"
         underline = "\n"
-        embed.add_field(name = "*Analysis*", value = f"""- *Secret word difficulty*: *<comming soon>*\n- *Guess efficiency*: ```{underline.join(map(lambda x: str(x) + "%", ego.tried_efficiency))}```""")
-        embed.set_footer(text = f'Requested by {ego.interaction.user.name}#{ego.interaction.user.discriminator}', icon_url=ego.interaction.user.avatar)
-        await ego.interaction.edit_original_response(embed = embed, view = None)
+        embed.add_field(name = "*Analysis*", value = f"""- *Secret word difficulty*: *<comming soon>*\n- *Guess efficiency*: \n```{underline.join(map(lambda x: str(x) + "%", this.tried_efficiency))}```""")
+        embed.set_footer(text = f'Requested by {this.interaction.user.name}#{this.interaction.user.discriminator}', icon_url=this.interaction.user.avatar)
+        await this.interaction.edit_original_response(embed = embed, view = None)
         # GAME ENdED
-    async def lost(ego) -> None:
+    async def lost(this) -> None:
         embed = Embed(title="Wordle")
-        embed.description = f"**You lost!** :joy: \nThe secret word was: `{ego.secret_word}`\nYour guesses: ```\n" + "\n".join(ego.tried) + "```"
+        embed.description = f"**You lost!** :joy: \nThe secret word was: `{this.secret_word}`\nYour guesses: ```\n" + "\n".join(this.tried) + "```"
         underline = '\n'
-        embed.add_field(name = "*Analysis*", value = f"""- *Secret word difficulty*: *<comming soon>*\n- *Guess efficiency*: ```{underline.join(map(lambda x: str(x) + "%", ego.tried_efficiency))}```""")
-        embed.set_footer(text = f'Requested by {ego.interaction.user.name}#{ego.interaction.user.discriminator}', icon_url=ego.interaction.user.avatar)
-        await ego.interaction.edit_original_response(embed = embed, view = None)
-
+        embed.add_field(name = "*Analysis*", value = f"""- *Secret word difficulty*: *<comming soon>*\n- *Guess efficiency*: ```{underline.join(map(lambda x: str(x) + "%", this.tried_efficiency))}```""")
+        embed.set_footer(text = f'Requested by {this.interaction.user.name}#{this.interaction.user.discriminator}', icon_url=this.interaction.user.avatar)
+        await this.interaction.edit_original_response(embed = embed, view = None)
+    
     class guessModal(Modal, title='Guess your Wordle'):
         def __init__(self, main) -> None:
             super().__init__()
@@ -368,12 +424,13 @@ class game_wordle():
             guess = str(self.word).lower()
             compared = await self.main.compare_word(guess, self.main.secret_word)
             if compared.get("invalid", True):
-                if compared["invalid_type"] == 1:
-                    error_msg = "Your guess should be a 5-letter word."
-                elif compared["invalid_type"] == 2:
-                    error_msg = "Your guess should only contain letters."
-                elif compared["invalid_type"] == 3:
-                    error_msg = "Your guess-ed word is not in the dictionary."
+                match compared["invalid_type"]:
+                    case 1:
+                        error_msg = "Your guess should be a 5-letter word."
+                    case 2:
+                        error_msg = "Your guess should only contain letters."
+                    case 3:
+                        error_msg = "Your guess-ed word is not in the dictionary."
                 await interaction.followup.send(error_msg, ephemeral = True)
                 return
             self.main.tries -= 1
@@ -431,22 +488,19 @@ class game(Group):
         if maintenance_status:
             await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction))
             return False
-        i = (await check_user_whitelist(user = interaction.user.id))
-        l = (interaction.user.id in configurations.owner_ids)
-        k = interaction.guild_id is not None
-        p = interaction.guild_id in [guild.id for guild in client.guilds]
-        if l:
+        if interaction.user.id in configurations.owner_ids:
             return True
-        elif not k:
+        elif not interaction.guild_id is not None:
             await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.').uniform(interaction))
             return False
-        elif not p:
+        elif not interaction.guild_id in [guild.id for guild in client.guilds]:
             await interaction.followup.send(embed=Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').uniform(interaction))
             return False
-        elif not (i or l):
+        elif not await check_user_whitelist(user = interaction.user.id):
             await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').uniform(interaction))
             return False
         return True
+
     @command(name='wordle', description='BETA - Play Wordle in Discord.')
     @describe(silent = 'Whether you want the output to be sent to you alone or not')
     async def wordle(self, interaction: Interaction, silent: bool = False):
@@ -459,25 +513,51 @@ class game(Group):
 
 tree.add_command(game())
 
+class tool(Group):
+    @staticmethod
+    async def is_authorized(interaction: Interaction):
+        if maintenance_status:
+            await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction))
+            return False
+        if interaction.user.id in configurations.owner_ids:
+            return True
+        elif not interaction.guild_id is not None:
+            await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.').uniform(interaction))
+            return False
+        elif not interaction.guild_id in [guild.id for guild in client.guilds]:
+            await interaction.followup.send(embed=Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').uniform(interaction))
+            return False
+        elif not await check_user_whitelist(user = interaction.user.id):
+            await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').uniform(interaction))
+            return False
+        return True
+    @staticmethod
+    def getTOTP(secret: str):
+        return TOTP(secret).now()
+    @command(name='totp', description='BETA - Instantly generate a TOTP code from your secret.') 
+    @describe(silent = 'Whether you want the output to be sent to you alone or not', secret = 'The secret key for TOTP')
+    async def totp(self, interaction: Interaction, secret: str, silent: bool = True):
+        await interaction.response.defer()
+        if not await self.is_authorized(interaction): return
+        await interaction.followup.send(embed=Embed(title='TOTP', description=f'`{self.getTOTP(secret)}`').uniform(interaction), ephemeral=silent)
+
+tree.add_command(tool())
+
 class net(Group):
     @staticmethod
     async def is_authorized(interaction: Interaction):
         if maintenance_status:
             await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction))
             return False
-        i = (await check_user_whitelist(user = interaction.user.id))
-        l = (interaction.user.id in configurations.owner_ids)
-        k = interaction.guild_id is not None
-        p = interaction.guild_id in [guild.id for guild in client.guilds]
-        if l:
+        if interaction.user.id in configurations.owner_ids:
             return True
-        elif not k:
+        elif not interaction.guild_id is not None:
             await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.').uniform(interaction))
             return False
-        elif not p:
+        elif not interaction.guild_id in [guild.id for guild in client.guilds]:
             await interaction.followup.send(embed=Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').uniform(interaction))
             return False
-        elif not (i or l):
+        elif not await check_user_whitelist(user = interaction.user.id):
             await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').uniform(interaction))
             return False
         return True
@@ -554,7 +634,23 @@ class net(Group):
             await debugmsg.edit(embed = debugem)
             break
         return {"success": success, "image_data": image_data, "error": error, "api_elapsed": api_elapsed}
-    
+    @staticmethod
+    async def get_domaininfo(url: str, apikey: configurations = configurations.webresolverapi):
+        async with ClientSession() as session:
+            async with session.get(f'https://webresolver.nl/api.php?key={apikey}&action=dns&string={url}') as response:
+                dns = await response.text()
+            async with session.get(f'https://webresolver.nl/api.php?key={apikey}&action=geoip&string={url}') as response:
+                geoip = await response.text()
+        return dns, geoip
+
+    #@command(name='rayso', description='BETA - Create beautiful images of your code using ray.so')
+    #@describe(title="The title of the code snippet", theme="The color scheme of the code you want to use", background="Whether you want a background or not", darkMode="Whether you want dark mode or not", padding="The padding around the content of the code snippet", language="The language the code is in", silent="Whether you want the output to be sent to you alone or not")
+    #@choices(theme=[Choice(value=i, name=k) for i, k in [('breeze', 'Breeze'), ('candy', 'Candy'), ('crimson', 'Crimson'), ('falcon', 'Falcon'), ('meadow', 'Meadow'), ('midnight', 'Midnight'), ('raindrop', 'Raindrop'), ('sunset', 'Sunset')]], padding=[Choice(value=i, name=k) for i, k in [(16, 'small: 16'), (32, 'medium: 32'), (64, 'large: 64'), (128, 'xtralarge: 128')]], language=None)
+    async def rayso(self, interaction: Interaction, title: str = 'main', theme: str = 'breeze', background: bool = True, darkMode: bool = True, padding: int = 32, language: str = 'auto', silent: bool = False):
+        # await interaction.response.defer(ephemeral=silent)
+        if not await self.is_authorized(interaction): return
+        # TODO: send a modal/view to get the code, process it and send it to the API, and then return the image.
+
     @command(name='screenshot', description='BETA - Take a screenshot of a website')
     @describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s) (default: 0)', resolution = 'Resolution of the driver window (Default: 720p)', silent = 'Whether you want the output to be sent to you alone or not')
     @choices(resolution = [Choice(value=i, name=k) for i, k in [(240, '240p - Minimum'), (360, '360p - Website'), (480, '480p - Standard'), (720, '720p - HD'), (1080, '1080p - Full HD'), (1440, '1440p - 2K'), (2160, '2160p - 4K')]]) # , ('undetected_selenium', 'Selenium + Undetected Chromium (for bypassing)') # engine = [Choice(value=i, name=k) for i, k in [('selenium', 'Selenium + Chromium'), ('playwright', 'Playwright + Chromium')]]
@@ -598,6 +694,7 @@ class net(Group):
             return
         ipdata = await self.get_ip_info(ipv4)
         embed = Embed(title=f"IP information", description= f"Here's the information for `{ipv4}`:")
+        fieldlist = [("null", "null")]
         if "error" in ipdata:
             err = ipdata.get("error")
             fieldlist = [
@@ -608,21 +705,21 @@ class net(Group):
             fieldlist = [
                 ("IP", ipdata.get("ip", None)),
                 ("Data Center", ipdata.get("data_center", None)),
-                ("Continent", f'{ipdata.get("geo", {}).get("continent", "_")} | {ipdata.get("geo", {}).get("continent_code", "_")}'),
-                ("Country", f'{ipdata.get("geo", {}).get("country", "_")} | {ipdata.get("geo", {}).get("country_code", "_")} {ipdata.get("geo", {}).get("country_flag_emoji", "?")}'),
+                ("Continent", f'{ipdata.get("geo", {}).get("continent", "null")} | {ipdata.get("geo", {}).get("continent_code", "null")}'),
+                ("Country", f'{ipdata.get("geo", {}).get("country", "null")} | {ipdata.get("geo", {}).get("country_code", "null")} {ipdata.get("geo", {}).get("country_flag_emoji", "?")}'),
                 ("City", ipdata.get("geo", {}).get("city", None)),
-                ("Region", f'{ipdata.get("geo", {}).get("region", "_")} | {ipdata.get("geo", {}).get("region_code", "_")}'),
+                ("Region", f'{ipdata.get("geo", {}).get("region", "null")} | {ipdata.get("geo", {}).get("region_code", "null")}'),
                 ("\u200B", "\n"),  # blank field separator
                 ("Network Route", ipdata.get("network", {}).get("route", None)),
                 ("AS Number", ipdata.get("network", {}).get("as_number", None)),
-                ("AS Organization", f'{ipdata.get("network", {}).get("as_org", "_")} | {ipdata.get("network", {}).get("as_org_alt", "?")}')
+                ("AS Organization", f'{ipdata.get("network", {}).get("as_org", "null")} | {ipdata.get("network", {}).get("as_org_alt", "?")}')
             ]
         for field_name, field_value in fieldlist:
-            if field_value is None: continue
+            if field_value is None or "null" in str(field_value): continue
             embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=False)
         embed.uniform(interaction)
         await interaction.followup.send(embed = embed, ephemeral=silent)
-    @command(name = 'unshort_url', description='Capture redirects from a URL and return the final URL.')
+    @command(name = 'unshortener', description='Capture redirects from a URL and return the final URL.')
     @describe(url = "The URL you want to unshorten.", silent = 'Whether you want the output to be sent to you alone or not')
     async def unshorten_url(self, interaction: Interaction, url: str, silent: bool = False):
         await interaction.response.defer(ephemeral=silent)
@@ -643,14 +740,28 @@ class net(Group):
         global_elapsed = round(1000*(time() - els))
         await msg.edit(embed=Embed(title="Finished", description="Your request has been processed.").uniform(interaction))
         if data["success"]:
-            redirects = data.get("redirect_list", [])
-            embed = Embed(title='Success',description=f'Here is the list of of redirects got from {url} \n||*(took {global_elapsed}ms globally, {data["api_elapsed"]}ms for the API to work, elapsed times including requested delays)*||', ).uniform(interaction)
-            embed.add_field(name = 'Redirects', value = f'[{redirects[0]}]' + '\n' + '\n-> [passive]'.join([f'({i})' for i in redirects[1:-1]]) + '\n=> ' + redirects[-1])
+            redirects = set(data.get("redirect_list", []))
+            if len(redirects) > 1 :
+                embed = Embed(title='Success',description=f'Here is the information you need got from {url} \n||*(took {global_elapsed}ms globally, {data["api_elapsed"]}ms for the API to work, elapsed times including requested delays)*||', ).uniform(interaction)
+                embed.add_field(name = 'Final URL', value = f'**{redirects[-1]}**')
+                if len(redirects) != 2:
+                    embed.add_field(name = 'Traceroute', value = f'[{redirects[0]}]' + '\n' + '\n-> [passive]'.join([f'({i})' for i in redirects[1:-1]]) + '\n=> ' + redirects[-1])
+                else:
+                    embed.add_field(name = 'Traceroute', value = f'[{redirects[0]}]' + '\n=> ' + redirects[-1])
+            else:
+                embed = Embed(title='Success', description="There's no redirect for this URL.").uniform(interaction)
             await interaction.followup.send(ephemeral = silent, embed=embed)
         else:
             await interaction.followup.send(ephemeral = silent, embed=Embed(title='Error', description=f'Failed to get redirects from the URL, ask developers for more details... [API error?]').uniform(interaction))   
 
+
 tree.add_command(net())
+
+@tree.command(name='ping', description='Returns the bot latency.')
+async def ping(interaction: Interaction):
+    await interaction.response.defer(ephemeral=True)
+    await interaction.followup.send(embed=Embed(title="Pong!", description=f"Bot latency: `{round(client.latency*1000)}ms`", ).uniform(interaction), ephemeral=True)
+
 
 @tree.command(name='uptime', description='Returns the bot uptime.')
 async def uptime(interaction: Interaction):
@@ -663,12 +774,7 @@ async def uptime(interaction: Interaction):
 BOOT
 -------------------------------------------------
 """
-discord_logger = logging.getLogger('discord')
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-ch.setFormatter(CustomFormatter())
-discord_logger.addHandler(ch)
-del discord_logger
+
 
 def build_mode():
     with open('version.json', 'w+') as f:
@@ -685,7 +791,7 @@ def run():
         ka()
         ilog('Flask server is ready!', 'init', 'info')
     ilog('Starting Discord client...', 'init', 'info')
-    client.run(configurations.bot_token)
+    client.run(token = configurations.bot_token, log_formatter=CustomFormatter())
 build = not configurations.not_builder
 if __name__ == '__main__':
     if not build:
