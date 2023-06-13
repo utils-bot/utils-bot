@@ -24,8 +24,6 @@ DEFINING VARS
 -------------------------------------------------
 """
 
-
-
 class MyClient(Client):
     def __init__(self, *, intents: Intents = Intents.default()) -> None:
         super().__init__(intents=intents)
