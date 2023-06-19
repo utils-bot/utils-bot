@@ -7,10 +7,9 @@ from discord.app_commands import CommandTree, Group, command, Choice, choices, d
 from discord.ui import button, View, Modal, Button, TextInput
 from discord.ext import tasks
 from jsondb import check_bot_version, get_user_whitelist, update_user_whitelist, check_user_whitelist
-import logging, typing, traceback, asyncio, json, sentry_sdk, re
+import logging, typing, traceback, asyncio, json, sentry_sdk, re, sys as sysio, os, platform, psutil, binascii
 from aiohttp import ClientSession
 from logger import CustomFormatter, ilog
-from os import system
 from time import time
 from keep_alive import ka
 from io import BytesIO
@@ -23,8 +22,6 @@ from pyotp import TOTP
 DEFINING VARS
 -------------------------------------------------
 """
-
-
 
 class MyClient(Client):
     def __init__(self, *, intents: Intents = Intents.default()) -> None:
@@ -146,7 +143,7 @@ async def sync(interaction: Interaction, delay: Range[int, 0, 60] = 30, silent: 
     if interaction.user.id not in configurations.owner_ids:
         await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").uniform(interaction), ephemeral=True)
         return
-    await interaction.followup.send(embed=Embed(title="Syncing job requested", description='A sync job for this bot has been queued. All functions of the bot will be disabled to prevent ratelimit.').uniform(interaction), ephemeral=silent)
+    await interaction.followup.send(embed=Embed(title="Syncing job requested", description=f'A sync job for this bot has been queued. All functions of the bot will be disabled to prevent ratelimit. The current version of the bot is ``{configurations.bot_version}``.').uniform(interaction), ephemeral=silent)
     await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
     ilog(f'Sync job requested, working on the sync...', logtype = 'warning', flag = 'tree')
     ilog(f'Locking the bot', logtype = 'info', flag = 'tree sync')
@@ -265,8 +262,8 @@ class locsys(Group):
         if not await self.is_authorized(interaction): return
         
         ilog("Updating git repo...", 'git', 'warning')
-        system('git fetch --all')
-        system('git reset --hard origin/main')
+        os.system('git fetch --all')
+        os.system('git reset --hard origin/main')
         
         await interaction.followup.send(embed=Embed(title="Done", description='Successfully updated the bot repo on Github.').uniform(interaction), ephemeral=silent)
 
@@ -289,7 +286,7 @@ class locsys(Group):
         ilog('Restarting...', 'system', 'critical')
         await client.change_presence(status=Status.dnd, activity=Game('restarting...'))
         await asyncio.sleep(5)
-        system('kill 1')
+        os.system('kill 1')
 
     @command(name = 'maintenance', description='Toggle maintenance mode for supported commands')
     @describe(status_to_set = 'Status of maintenance to set into the database', silent = 'Whether you want the output to be sent to you alone or not')
@@ -332,7 +329,7 @@ class game_wordle():
         if this.secret_word is None: this.secret_word = (await this.get_word()).get("word", "smhhh")
         embed = Embed(title="Wordle")
         embed.description = "Make a guess by click the green guess button below!\n`Your guesses:` ```\n" + "\n".join(this.tried) + "```"
-        embed.set_footer(text = f'Requested by {this.interaction.user.name}#{this.interaction.user.discriminator}', icon_url=this.interaction.user.avatar)
+        embed.uniform(this.interaction)
         await this.interaction.edit_original_response(embed=embed, view=this.play())
     
     @staticmethod
@@ -402,8 +399,8 @@ class game_wordle():
         embed = Embed(title="Wordle")
         embed.description = f"**You won with {this.tries} trie(s) left!** :heart:\nThe secret word was: `{this.secret_word}`\nYour guesses: ```\n" + "\n".join(this.tried) + "```"
         underline = "\n"
-        embed.add_field(name = "*Analysis*", value = f"""- *Secret word difficulty*: *<comming soon>*\n- *Guess efficiency*: \n```{underline.join(map(lambda x: str(x) + "%", this.tried_efficiency))}```""")
-        embed.set_footer(text = f'Requested by {this.interaction.user.name}#{this.interaction.user.discriminator}', icon_url=this.interaction.user.avatar)
+        embed.add_field(name = "*Analysis*", value = f"""*Secret word difficulty*: *<comming soon>*\n*Guess efficiency*: \n```{underline.join(map(lambda x: str(x) + "%", this.tried_efficiency))}```""")
+        embed.uniform(this.interaction)
         await this.interaction.edit_original_response(embed = embed, view = None)
         # GAME ENdED
     async def lost(this) -> None:
@@ -411,7 +408,7 @@ class game_wordle():
         embed.description = f"**You lost!** :joy: \nThe secret word was: `{this.secret_word}`\nYour guesses: ```\n" + "\n".join(this.tried) + "```"
         underline = '\n'
         embed.add_field(name = "*Analysis*", value = f"""- *Secret word difficulty*: *<comming soon>*\n- *Guess efficiency*: ```{underline.join(map(lambda x: str(x) + "%", this.tried_efficiency))}```""")
-        embed.set_footer(text = f'Requested by {this.interaction.user.name}#{this.interaction.user.discriminator}', icon_url=this.interaction.user.avatar)
+        embed.uniform(this.interaction)
         await this.interaction.edit_original_response(embed = embed, view = None)
     
     class guessModal(Modal, title='Guess your Wordle'):
@@ -533,7 +530,11 @@ class tool(Group):
         return True
     @staticmethod
     def getTOTP(secret: str):
-        return TOTP(secret).now()
+        try:
+            result = TOTP(secret).now()
+        except binascii.Error:
+            result = 'Invalid secret'
+        return result
     @command(name='totp', description='BETA - Instantly generate a TOTP code from your secret.') 
     @describe(silent = 'Whether you want the output to be sent to you alone or not', secret = 'The secret key for TOTP')
     async def totp(self, interaction: Interaction, secret: str, silent: bool = True):
@@ -757,17 +758,22 @@ class net(Group):
 
 tree.add_command(net())
 
-@tree.command(name='ping', description='Returns the bot latency.')
-async def ping(interaction: Interaction):
-    await interaction.response.defer(ephemeral=True)
-    await interaction.followup.send(embed=Embed(title="Pong!", description=f"Bot latency: `{round(client.latency*1000)}ms`", ).uniform(interaction), ephemeral=True)
-
-
-@tree.command(name='uptime', description='Returns the bot uptime.')
-async def uptime(interaction: Interaction):
-    global unix_uptime
-    await interaction.response.defer(ephemeral=True)
-    await interaction.followup.send(embed=Embed(title="Current bot uptime", description=f"Bot was online <t:{unix_uptime}:R> (<t:{unix_uptime}:T> <t:{unix_uptime}:d>) ", ).uniform(interaction), ephemeral=True)
+@tree.command(name='info', description='Returns the bot information.')
+@describe(silent = 'Whether you want the output to be sent to you alone or not')
+async def info(interaction: Interaction, silent: bool = False):
+    await interaction.response.defer()
+    embed = Embed(title="Bot information: ")
+    embed.description = f'```ansi\nPython {sysio.version} on {sysio.platform}\nType "help", "copyright", "credits" or "license" for more information.\n>>>\n```'
+    embed.add_field(name = 'OS, Architecture', value = f"{platform.system()} ({os.name}) {platform.release()}", inline = False)
+    embed.add_field(name = 'CPU load', value = f"{psutil.cpu_percent()}% ({psutil.cpu_count()} cores)", inline = True)
+    embed.add_field(name = 'Memory usage', value = f"{psutil.virtual_memory().percent}% ({round(psutil.virtual_memory().used/1024/1024/1024, 2)}GB/{round(psutil.virtual_memory().total/1024/1024/1024, 2)}GB)", inline = True)
+    embed.add_field(name = 'Disk usage', value = f"{psutil.disk_usage('/').percent}% ({round(psutil.disk_usage('/').used/1024/1024/1024, 2)}GB/{round(psutil.disk_usage('/').total/1024/1024/1024, 2)}GB)", inline = True)
+    embed.add_field(name = 'Bot username, ID', value = f"{client.user} ({client.user.id})", inline = False)
+    embed.add_field(name = 'Uptime', value = f"<t:{unix_uptime}:R> (<t:{unix_uptime}:T> <t:{unix_uptime}:d>)", inline = True)
+    embed.add_field(name = 'Guilds/Servers', value = f"{len(client.guilds)}", inline = True)
+    embed.add_field(name = 'API latency', value = f"{round(client.latency*1000)}ms", inline = True)
+    embed.uniform(interaction)
+    await interaction.followup.send(embed = embed, ephemeral=silent)
 
 """
 -------------------------------------------------
