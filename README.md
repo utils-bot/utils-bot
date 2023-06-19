@@ -19,7 +19,8 @@ utils-bot is a discord.py bot packaged with unique features.
 ### The bot includes some useful commands: 
 
 - For bot maintainers:
-  + `/sync` :  sync the CommandTree with Discord. (use with caution, this could causes ratelimits)
+  + `/sync` :  sync the CommandTree with Discord. (use with caution, this could causes ratelimits | should only be used when there's a update)
+  + `/info` :  get the current bot's infomation.
   + `/sys` 
     + `eval` : execute eval() scripts.
     + `guilds` : get the list of guilds that have this bot in.
@@ -37,9 +38,11 @@ utils-bot is a discord.py bot packaged with unique features.
   + `/net` 
     + `screenshot` : screenshot a website via a headless browser.
     + `ip` : get the IP info of a IPv4 address.
-    + `unshort_url` : capture redirects (302 status codes) from a URL.
+    + `unshortener` : capture redirects (3** status codes) from a URL.
   + `/game` 
     + `wordle` : play [NYT wordle](https://www.nytimes.com/games/wordle) inside Discord.
+  + `/tool` 
+    + `totp` : generate a TOTP code from a secret key.
 
 ### CommandTree
 ```
@@ -62,7 +65,12 @@ utils-bot is a discord.py bot packaged with unique features.
 /net
     |-- screenshot
     |-- ip
-    |-- deshorten
+    |-- unshortener
+
+/tool
+    |-- totp
+
+/info
 ```
 
 ## Contributing

@@ -7,7 +7,7 @@ from discord.app_commands import CommandTree, Group, command, Choice, choices, d
 from discord.ui import button, View, Modal, Button, TextInput
 from discord.ext import tasks
 from jsondb import check_bot_version, get_user_whitelist, update_user_whitelist, check_user_whitelist
-import logging, typing, traceback, asyncio, json, sentry_sdk, re, sys, os, platform, psutil, binascii
+import logging, typing, traceback, asyncio, json, sentry_sdk, re, sys as sysio, os, platform, psutil, binascii
 from aiohttp import ClientSession
 from logger import CustomFormatter, ilog
 from time import time
@@ -763,7 +763,7 @@ tree.add_command(net())
 async def info(interaction: Interaction, silent: bool = False):
     await interaction.response.defer()
     embed = Embed(title="Bot version")
-    embed.description = f'```{sys.version} on {sys.platform}\nType "help", "copyright", "credits" or "license" for more information.\n>>>\n```'
+    embed.description = f'```{sysio.version} on {sysio.platform}\nType "help", "copyright", "credits" or "license" for more information.\n>>>\n```'
     embed.add_field(name = 'OS, Architecture', value = f"{platform.system()} ({os.name}) {platform.release()}", inline = False)
     embed.add_field(name = 'CPU load', value = f"{psutil.cpu_percent()}% ({psutil.cpu_count()} cores)", inline = False)
     embed.add_field(name = 'Memory usage', value = f"{psutil.virtual_memory().percent}% ({round(psutil.virtual_memory().used/1024/1024/1024, 2)}GB/{round(psutil.virtual_memory().total/1024/1024/1024, 2)}GB)", inline = True)
