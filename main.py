@@ -143,7 +143,7 @@ async def sync(interaction: Interaction, delay: Range[int, 0, 60] = 30, silent: 
     if interaction.user.id not in configurations.owner_ids:
         await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").uniform(interaction), ephemeral=True)
         return
-    await interaction.followup.send(embed=Embed(title="Syncing job requested", description='A sync job for this bot has been queued. All functions of the bot will be disabled to prevent ratelimit.').uniform(interaction), ephemeral=silent)
+    await interaction.followup.send(embed=Embed(title="Syncing job requested", description=f'A sync job for this bot has been queued. All functions of the bot will be disabled to prevent ratelimit. The current version of the bot is {configurations.bot_version}').uniform(interaction), ephemeral=silent)
     await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
     ilog(f'Sync job requested, working on the sync...', logtype = 'warning', flag = 'tree')
     ilog(f'Locking the bot', logtype = 'info', flag = 'tree sync')
@@ -773,7 +773,7 @@ async def info(interaction: Interaction, silent: bool = False):
     embed.add_field(name = 'Guilds/Servers', value = f"{len(client.guilds)}", inline = True)
     embed.add_field(name = 'API latency', value = f"{round(client.latency*1000)}ms", inline = True)
     embed.uniform(interaction)
-    pass
+    await interaction.followup.send(embed = embed, ephemeral=silent)
 
 """
 -------------------------------------------------
