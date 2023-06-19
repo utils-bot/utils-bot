@@ -143,7 +143,7 @@ async def sync(interaction: Interaction, delay: Range[int, 0, 60] = 30, silent: 
     if interaction.user.id not in configurations.owner_ids:
         await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").uniform(interaction), ephemeral=True)
         return
-    await interaction.followup.send(embed=Embed(title="Syncing job requested", description=f'A sync job for this bot has been queued. All functions of the bot will be disabled to prevent ratelimit. The current version of the bot is {configurations.bot_version}').uniform(interaction), ephemeral=silent)
+    await interaction.followup.send(embed=Embed(title="Syncing job requested", description=f'A sync job for this bot has been queued. All functions of the bot will be disabled to prevent ratelimit. The current version of the bot is ``{configurations.bot_version}``.').uniform(interaction), ephemeral=silent)
     await client.change_presence(activity=Game('syncing...'), status=Status.dnd)
     ilog(f'Sync job requested, working on the sync...', logtype = 'warning', flag = 'tree')
     ilog(f'Locking the bot', logtype = 'info', flag = 'tree sync')
@@ -762,10 +762,10 @@ tree.add_command(net())
 @describe(silent = 'Whether you want the output to be sent to you alone or not')
 async def info(interaction: Interaction, silent: bool = False):
     await interaction.response.defer()
-    embed = Embed(title="Bot version")
-    embed.description = f'```{sysio.version} on {sysio.platform}\nType "help", "copyright", "credits" or "license" for more information.\n>>>\n```'
+    embed = Embed(title="Bot information: ")
+    embed.description = f'```ansi\n{sysio.version} on {sysio.platform}\nType "help", "copyright", "credits" or "license" for more information.\n>>>\n```'
     embed.add_field(name = 'OS, Architecture', value = f"{platform.system()} ({os.name}) {platform.release()}", inline = False)
-    embed.add_field(name = 'CPU load', value = f"{psutil.cpu_percent()}% ({psutil.cpu_count()} cores)", inline = False)
+    embed.add_field(name = 'CPU load', value = f"{psutil.cpu_percent()}% ({psutil.cpu_count()} cores)", inline = True)
     embed.add_field(name = 'Memory usage', value = f"{psutil.virtual_memory().percent}% ({round(psutil.virtual_memory().used/1024/1024/1024, 2)}GB/{round(psutil.virtual_memory().total/1024/1024/1024, 2)}GB)", inline = True)
     embed.add_field(name = 'Disk usage', value = f"{psutil.disk_usage('/').percent}% ({round(psutil.disk_usage('/').used/1024/1024/1024, 2)}GB/{round(psutil.disk_usage('/').total/1024/1024/1024, 2)}GB)", inline = True)
     embed.add_field(name = 'Bot username, ID', value = f"{client.user} ({client.user.id})", inline = False)
