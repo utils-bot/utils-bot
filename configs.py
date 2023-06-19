@@ -1,6 +1,6 @@
 from os import environ
 class configurations:
-    bot_version = 'v0.4.1' # ignore
+    bot_version = 'v0.5.1' # ignore
     bot_token = environ.get('bot_token') 
     owner_ids = [806432782111735818]
     owner_guild_id = 1070724751284256939
