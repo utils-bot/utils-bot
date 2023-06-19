@@ -763,7 +763,7 @@ tree.add_command(net())
 async def info(interaction: Interaction, silent: bool = False):
     await interaction.response.defer()
     embed = Embed(title="Bot information: ")
-    embed.description = f'```ansi\n{sysio.version} on {sysio.platform}\nType "help", "copyright", "credits" or "license" for more information.\n>>>\n```'
+    embed.description = f'```ansi\nPython {sysio.version} on {sysio.platform}\nType "help", "copyright", "credits" or "license" for more information.\n>>>\n```'
     embed.add_field(name = 'OS, Architecture', value = f"{platform.system()} ({os.name}) {platform.release()}", inline = False)
     embed.add_field(name = 'CPU load', value = f"{psutil.cpu_percent()}% ({psutil.cpu_count()} cores)", inline = True)
     embed.add_field(name = 'Memory usage', value = f"{psutil.virtual_memory().percent}% ({round(psutil.virtual_memory().used/1024/1024/1024, 2)}GB/{round(psutil.virtual_memory().total/1024/1024/1024, 2)}GB)", inline = True)
