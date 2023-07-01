@@ -77,6 +77,7 @@ class MyClient(Client):
         ilog('Connected to ' + str(guilds_num) + ' guilds', 'client.on_ready', 'info')
         await asyncio.sleep(5)
         await self.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
+        ilog('Done! Successfully started the bot!', 'client.on_ready', 'info')
 
 intents = Intents.default()
 client = MyClient(intents=intents)
@@ -494,7 +495,7 @@ class game(Group):
             await interaction.followup.send(embed=Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').uniform(interaction))
             return False
         elif not await check_user_whitelist(user = interaction.user.id):
-            await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').uniform(interaction))
+            await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access; try asking a developer to whitelist you.').uniform(interaction))
             return False
         return True
 
@@ -525,7 +526,7 @@ class tool(Group):
             await interaction.followup.send(embed=Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').uniform(interaction))
             return False
         elif not await check_user_whitelist(user = interaction.user.id):
-            await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').uniform(interaction))
+            await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access; try asking a developer to whitelist you.').uniform(interaction))
             return False
         return True
     @staticmethod
@@ -536,9 +537,10 @@ class tool(Group):
             result = 'Invalid secret'
         return result
     @command(name='totp', description='BETA - Instantly generate a TOTP code from your secret.') 
-    @describe(silent = 'Whether you want the output to be sent to you alone or not', secret = 'The secret key for TOTP')
+    @describe(secret = 'The secret key for TOTP', silent = 'Whether you want the output to be sent to you alone or not')
     async def totp(self, interaction: Interaction, secret: str, silent: bool = True):
-        await interaction.response.defer()
+        secret = secret.replace(' ', '')
+        await interaction.response.defer(ephemeral=silent)
         if not await self.is_authorized(interaction): return
         await interaction.followup.send(embed=Embed(title='TOTP', description=f'`{self.getTOTP(secret)}`').uniform(interaction), ephemeral=silent)
 
@@ -559,7 +561,7 @@ class net(Group):
             await interaction.followup.send(embed=Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').uniform(interaction))
             return False
         elif not await check_user_whitelist(user = interaction.user.id):
-            await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access.').uniform(interaction))
+            await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access; try asking a developer to whitelist you.').uniform(interaction))
             return False
         return True
     @staticmethod
@@ -761,7 +763,7 @@ tree.add_command(net())
 @tree.command(name='info', description='Returns the bot information.')
 @describe(silent = 'Whether you want the output to be sent to you alone or not')
 async def info(interaction: Interaction, silent: bool = False):
-    await interaction.response.defer()
+    await interaction.response.defer(ephemeral=silent)
     embed = Embed(title="Bot information: ")
     embed.description = f'```ansi\nPython {sysio.version} on {sysio.platform}\nType "help", "copyright", "credits" or "license" for more information.\n>>>\n```'
     embed.add_field(name = 'OS, Architecture', value = f"{platform.system()} ({os.name}) {platform.release()}", inline = False)

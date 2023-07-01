@@ -1,3 +1,4 @@
+# FOR REPLIT
 from flask import Flask
 from logging import getLogger
 from threading import Thread
