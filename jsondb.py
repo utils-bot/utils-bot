@@ -4,16 +4,6 @@ from configs import configurations
 DATABASE_URL = configurations.database_url
 DATABASE_SECRET = configurations.database_secret
 
-VERSION_PATH = 'version.json'
-def check_bot_version(to_compare: str) -> str:
-    if not path.exists(VERSION_PATH):
-        with open(VERSION_PATH, 'w+') as f:
-            json.dump({'current_version': to_compare}, f)
-        return True
-    with open(VERSION_PATH, 'r') as f:
-        version = json.load(f)
-    return version.get('current_version') == to_compare
-
 async def get_user_whitelist():
     async with aiohttp.ClientSession() as session:
         headers = {'Authorization': DATABASE_SECRET}
