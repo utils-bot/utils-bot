@@ -2,6 +2,7 @@
 Check .env.example to setup the bot.
 ---------------------------------------------"""
 
+import typing, traceback, asyncio, json, sentry_sdk, sys as sysio, os, platform, psutil, binascii
 from discord import Intents, Client, Interaction, Object, Embed as discordEmbed, File, Game, Status, Member, Webhook, ButtonStyle, TextStyle, Activity, ActivityType
 from discord.app_commands import CommandTree, Group, command, Choice, choices, describe, Range, AppCommandError
 from discord.app_commands.checks import cooldown
@@ -9,12 +10,11 @@ from discord.app_commands.errors import CommandOnCooldown
 from discord.gateway import DiscordWebSocket
 from discord.ui import button, View, Modal, Button, TextInput
 from discord.ext import tasks
-from jsondb import get_user_whitelist, update_user_whitelist, check_user_whitelist
-import typing, traceback, asyncio, json, sentry_sdk, sys as sysio, os, platform, psutil, binascii
+from .jsondb import get_user_whitelist, update_user_whitelist, check_user_whitelist
 from aiohttp import ClientSession
-from logger import CustomFormatter, ilog
+from .logger import CustomFormatter, ilog
 from time import time
-from keep_alive import ka
+from .keep_alive import ka
 from io import BytesIO
 from configs import configurations
 from pyotp import TOTP
