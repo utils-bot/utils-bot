@@ -1,6 +1,6 @@
 from os import environ
 class configurations:
-    bot_version = 'v0.5.2' # ignore
+    bot_version = 'v0.6' # ignore
     bot_token = environ.get('bot_token', 'replace_with_your_own_token')
     bot_support_server = environ.get('bot_support_server', 'https://discord.gg/')
     owner_ids = [806432782111735818]

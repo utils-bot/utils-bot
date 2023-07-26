@@ -2,19 +2,21 @@
 Check .env.example to setup the bot.
 ---------------------------------------------"""
 
+import typing, traceback, asyncio, json, sentry_sdk, sys as sysio, os, platform, psutil, binascii
 from discord import Intents, Client, Interaction, Object, Embed as discordEmbed, File, Game, Status, Member, Webhook, ButtonStyle, TextStyle, Activity, ActivityType
-from discord.app_commands import CommandTree, Group, command, Choice, choices, describe, Range
+from discord.app_commands import CommandTree, Group, command, Choice, choices, describe, Range, AppCommandError
+from discord.app_commands.checks import cooldown
+from discord.app_commands.errors import CommandOnCooldown
+from discord.gateway import DiscordWebSocket
 from discord.ui import button, View, Modal, Button, TextInput
 from discord.ext import tasks
-from jsondb import check_bot_version, get_user_whitelist, update_user_whitelist, check_user_whitelist
-import logging, typing, traceback, asyncio, json, sentry_sdk, re, sys as sysio, os, platform, psutil, binascii
+from .jsondb import get_user_whitelist, update_user_whitelist, check_user_whitelist
 from aiohttp import ClientSession
-from logger import CustomFormatter, ilog
+from .logger import CustomFormatter, ilog
 from time import time
-from keep_alive import ka
+from .keep_alive import ka
 from io import BytesIO
 from configs import configurations
-from datetime import datetime
 from pyotp import TOTP
 
 """
@@ -22,6 +24,12 @@ from pyotp import TOTP
 DEFINING VARS
 -------------------------------------------------
 """
+
+class MyDiscordWebSocket(DiscordWebSocket):
+    async def send_as_json(self, data):
+        if (data.get('op') == self.IDENTIFY) and (data.get('d', {}).get('properties', {}).get('browser') is not None):
+                data['d']['properties']['browser'] = data['d']['properties']['device'] = 'Discord iOS'
+        await super().send_as_json(data)
 
 class MyClient(Client):
     def __init__(self, *, intents: Intents = Intents.default()) -> None:
@@ -79,7 +87,14 @@ class MyClient(Client):
         await self.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
         ilog('Done! Successfully started the bot!', 'client.on_ready', 'info')
 
+    async def on_error(self, event_method, *args, **kwargs):
+        "Handle exceptions"
+        ilog(f"Exception occurred in {event_method}:", 'client.on_error', 'error')
+        ilog(traceback.format_exc(), 'client.on_error', 'error')
+        return
+
 intents = Intents.default()
+DiscordWebSocket.from_client = MyDiscordWebSocket.from_client
 client = MyClient(intents=intents)
 tree = client.tree
 
@@ -103,9 +118,13 @@ def clean_traceback(traceback_str: str) -> str:
 APPLICATION ERROR HANDLER
 -------------------------------------------------"""
 @tree.error
-async def on_error(interaction: Interaction, error):
+async def on_error(interaction: Interaction, error: AppCommandError):
     if interaction.user.id not in configurations.owner_ids:
         await interaction.followup.send(embed=Embed(title="Exception occurred:", description= 'Ask the developer of the bot for more information.').uniform(interaction)) if not interaction.is_expired() else ilog("discord.Interaction expired on exception message.", flag = "command", logtype = 'warning')
+        return
+    if isinstance(error, CommandOnCooldown):
+        if not interaction.response.is_done(): await interaction.response.defer()
+        await interaction.followup.send(embed=Embed(title="You can't use this command right now", description= "Command on cooldown. Try again in " + str(round(error.retry_after, 2)) + " seconds.").uniform(interaction)) if not interaction.is_expired() else ilog("discord.Interaction expired on exception message.", flag = "command", logtype = 'warning')
         return
     full_err = traceback.format_exc()
     cleaned = clean_traceback(full_err)
@@ -198,7 +217,7 @@ class sys(Group):
         else:
             await interaction.response.defer(ephemeral=silent)
             if not await self.is_authorized(interaction): return
-        await interaction.followup.send(embed=Embed(title='Executing...', description='Executing the script...').uniform(interaction), wait=True)
+        await interaction.followup.send(embed=Embed(title='Executing...', description='Executing the script...').uniform(interaction), wait=True, ephemeral=True)
         await asyncio.sleep(0.5)
         ilog(f'{interaction.user.name}#{interaction.user.discriminator} ({interaction.user.id}) eval-ed: {script}', 'eval', 'warning')
         if not awaited: result = eval(script)
@@ -274,7 +293,7 @@ class locsys(Group):
         await interaction.response.defer(ephemeral=silent)
         if (not configurations.is_replit) or (not configurations.no_git_automation): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on a system that can auto-update itself.').uniform(interaction), ephemeral=silent); return
         if not await self.is_authorized(interaction): return
-        await interaction.followup.send(ephemeral=silent, embed=Embed(title = 'Bot version:', description= f'Bot version {configurations.bot_version} {"[outdated]" if not check_bot_version(configurations.bot_version) else "[up-to-date]"}').uniform(interaction))
+        await interaction.followup.send(ephemeral=silent, embed=Embed(title = 'Bot version:', description= f'Bot version {configurations.bot_version}').uniform(interaction))
 
     @command(name='restart', description='system - Restart the bot')
     @describe(silent = 'Whether you want the output to be sent to you alone or not')
@@ -628,7 +647,7 @@ class net(Group):
                         debugem.description = "[OK] Validate data\n[OK] Connect to the API\n[...] Fetching image\n[] Return image"
                         await debugmsg.edit(embed = debugem)
                         image_data = await response.read()
-                        api_elapsed = response.headers.get("X-Elapsed-Time")
+                        api_elapsed = float(response.headers.get("X-Elapsed-Time"))
                     except Exception as e:
                         success = False
                         error = e
@@ -657,6 +676,7 @@ class net(Group):
     @command(name='screenshot', description='BETA - Take a screenshot of a website')
     @describe(url='URL of the website you want to screenshot. (Include https:// or http://)', delay='Delays for the driver to wait after the website stopped loading (in seconds, max 20s) (default: 0)', resolution = 'Resolution of the driver window (Default: 720p)', silent = 'Whether you want the output to be sent to you alone or not')
     @choices(resolution = [Choice(value=i, name=k) for i, k in [(240, '240p - Minimum'), (360, '360p - Website'), (480, '480p - Standard'), (720, '720p - HD'), (1080, '1080p - Full HD'), (1440, '1440p - 2K'), (2160, '2160p - 4K')]]) # , ('undetected_selenium', 'Selenium + Undetected Chromium (for bypassing)') # engine = [Choice(value=i, name=k) for i, k in [('selenium', 'Selenium + Chromium'), ('playwright', 'Playwright + Chromium')]]
+    @cooldown(1, 60, key = lambda interaction: (interaction.user.id, time() if interaction.user.id in configurations.owner_ids else 0)) # unique cooldown object if the user is the owner
     async def screenshot(self, interaction: Interaction, url: str, delay: Range[int, 1, 20] = 0, resolution: int = 720, silent: bool = False):
         global global_ratelimit
         await interaction.response.defer(ephemeral = True)
@@ -681,13 +701,15 @@ class net(Group):
         await msg.edit(embed=Embed(title="Finished", description="Your request has been processed.").uniform(interaction))
         if data["success"]:
             image_bytes = data["image_data"]
-            embed = Embed(title='Success',description=f'Here is the website screenshot of {url} \n||*(took {global_elapsed}ms globally, {data["api_elapsed"]}ms for the API to work, elapsed times including requested delays)*||', ).uniform(interaction)
+            local_elapsed = data["api_elapsed"]
+            embed = Embed(title='Success',description=f'Here is the website screenshot of {url} \n||*(took {f"{global_elapsed}ms" if global_elapsed < 2000 else f"{round(global_elapsed/1000)}s"} globally, {f"{local_elapsed}ms" if local_elapsed < 2000 else f"{round(local_elapsed/1000)}s"} for the API to work, elapsed times including requested delays)*||', ).uniform(interaction)
             embed.set_image(url='attachment://screenshot.png')
             await interaction.followup.send(ephemeral = silent, embed=embed, file=File(BytesIO(image_bytes), filename='screenshot.png'))
         else:
             await interaction.followup.send(ephemeral = silent, embed=Embed(title='Error', description=f'Failed to get the screenshot from the API, ask developers for more details... [API error?]').uniform(interaction))   
     @command(name = 'ip', description='Use APIs to fetch information about a IPv4 address.')
     @describe(ipv4 = "The IPv4 address you want to fetch.", silent = 'Whether you want the output to be sent to you alone or not')
+    @cooldown(1, 60, key = lambda interaction: (interaction.user.id, time() if interaction.user.id in configurations.owner_ids else 0))
     # @choices(ipv4 = [Choice(value = i) for i in [f"{x}.{y}.{z}.{t}" for x in range(0, 255) for y in range(0, 255) for z in range(0, 255) for t in range(0, 255)]])
     async def ip(self, interaction: Interaction, ipv4: str, silent: bool = False):
         await interaction.response.defer(ephemeral=silent)
@@ -745,7 +767,8 @@ class net(Group):
         if data["success"]:
             redirects = data.get("redirect_list", [])
             if len(redirects) > 1 :
-                embed = Embed(title='Success',description=f'Here is the information you need got from {url} \n||*(took {global_elapsed}ms globally, {data["api_elapsed"]}ms for the API to work, elapsed times including requested delays)*||', ).uniform(interaction)
+                local_elapsed = data["api_elapsed"]
+                embed = Embed(title='Success',description=f'Here is the information you need got from {url} \n||*(took {f"{global_elapsed}ms" if global_elapsed < 2000 else f"{round(global_elapsed/1000)}s"} globally, {f"{local_elapsed}ms" if local_elapsed < 2000 else f"{round(local_elapsed/1000)}s"} for the API to work, elapsed times including requested delays)*||', ).uniform(interaction)
                 embed.add_field(name = 'Final URL', value = f'**{redirects[-1]}**')
                 if len(redirects) != 2:
                     embed.add_field(name = 'Traceroute', value = f'[{redirects[0]}]' + '\n' + '\n-> [passive]'.join([f'({i})' for i in redirects[1:-1]]) + '\n=> ' + redirects[-1])
