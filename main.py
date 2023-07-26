@@ -3,18 +3,18 @@ Check .env.example to setup the bot.
 ---------------------------------------------"""
 
 import typing, traceback, asyncio, json, sentry_sdk, sys as sysio, os, platform, psutil, binascii
-from discord import Intents, Client, Interaction, Object, Embed as discordEmbed, File, Game, Status, Member, Webhook, ButtonStyle, TextStyle, Activity, ActivityType
+from discord import Intents, Client, Interaction, Object, Embed as discordEmbed, File, Game, Status, Member, Webhook, ButtonStyle, TextStyle, Activity, ActivityType, Color
 from discord.app_commands import CommandTree, Group, command, Choice, choices, describe, Range, AppCommandError
 from discord.app_commands.checks import cooldown
 from discord.app_commands.errors import CommandOnCooldown
 from discord.gateway import DiscordWebSocket
 from discord.ui import button, View, Modal, Button, TextInput
 from discord.ext import tasks
-from .jsondb import get_user_whitelist, update_user_whitelist, check_user_whitelist
+from jsondb import get_user_whitelist, update_user_whitelist, check_user_whitelist
 from aiohttp import ClientSession
-from .logger import CustomFormatter, ilog
+from logger import CustomFormatter, ilog
 from time import time
-from .keep_alive import ka
+from keep_alive import ka
 from io import BytesIO
 from configs import configurations
 from pyotp import TOTP
@@ -586,7 +586,7 @@ class net(Group):
     @staticmethod
     async def get_ip_info(ip) -> dict:
         async with ClientSession() as session:
-            async with session.get(f'https://api.iprisk.info/v1/{ip}') as response:
+            async with session.get(f'https://beta.iprisk.info/v1/{ip}') as response:
                 data = await response.json()
             return data
     @staticmethod
@@ -726,18 +726,30 @@ class net(Group):
                 ("Error", err.get("message", None)),
                 ("Status", err.get("status", None)),
             ]
+            #   "data_center": false, "public_proxy": false, "tor_exit_relay": false,
+            # This address may be anonymised and belongs to a data-center or related
         else:
+            if ipdata.get("data_center", False) or ipdata.get("public_proxy", False) or ipdata.get("tor_exit_relay", False):
+                embed.color = Color.yellow()
+                specialip = ["belongs to a data-center" if ipdata.get("data_center", False) else "",\
+                            "be a public proxy" if ipdata.get("public_proxy", False) else "",\
+                                "be a Tor exit relay" if ipdata.get("tor_exit_relay", False) else ""]
+                notes = "This IP might: " + ", ".join([i for i in specialip if i != ""])
+            else:
+                notes = None
             fieldlist = [
+                ("Notes", notes),
                 ("IP", ipdata.get("ip", None)),
-                ("Data Center", ipdata.get("data_center", None)),
-                ("Continent", f'{ipdata.get("geo", {}).get("continent", "null")} | {ipdata.get("geo", {}).get("continent_code", "null")}'),
-                ("Country", f'{ipdata.get("geo", {}).get("country", "null")} | {ipdata.get("geo", {}).get("country_code", "null")} {ipdata.get("geo", {}).get("country_flag_emoji", "?")}'),
-                ("City", ipdata.get("geo", {}).get("city", None)),
-                ("Region", f'{ipdata.get("geo", {}).get("region", "null")} | {ipdata.get("geo", {}).get("region_code", "null")}'),
+                ("Continent", f'{ipdata.get("continent_name", "null")} | {ipdata.get("continent_code", "null")}'),
+                ("Country", f'{ipdata.get("country_name", "null")} | {ipdata.get("country_code", "null")} {ipdata.get("country_flag_emoji", "?")}'),
+                ("City", ipdata.get("city_name", None)),
+                ("Region", f'{ipdata.get("region_name", "null")} | {ipdata.get("region_code", "null")}'),
                 ("\u200B", "\n"),  # blank field separator
-                ("Network Route", ipdata.get("network", {}).get("route", None)),
-                ("AS Number", ipdata.get("network", {}).get("as_number", None)),
-                ("AS Organization", f'{ipdata.get("network", {}).get("as_org", "null")} | {ipdata.get("network", {}).get("as_org_alt", "?")}')
+                ("Network Route", ipdata.get("ip_range", None)),
+                ("AS Number", ipdata.get("autonomous_system_number", None)),
+                ("AS Organization", f'{ipdata.get("autonomous_system_organization", "null")} | {ipdata.get("autonomous_system_organization_alt", "?")}'),
+                ("Location", f'{ipdata.get("latitude", "null")}, {ipdata.get("longitude", "null")}'),
+                ("Time Zone", ipdata.get("time_zone", None))
             ]
         for field_name, field_value in fieldlist:
             if field_value is None or "null" in str(field_value): continue
