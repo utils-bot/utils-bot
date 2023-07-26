@@ -734,7 +734,7 @@ class net(Group):
                 specialip = ["belongs to a data-center" if ipdata.get("data_center", False) else "",\
                             "be a public proxy" if ipdata.get("public_proxy", False) else "",\
                                 "be a Tor exit relay" if ipdata.get("tor_exit_relay", False) else ""]
-                notes = "This IP might: " + ", ".join([i for i in specialip if i != ""])
+                notes = "This IP might " + "/ ".join([i for i in specialip if i != ""])
             else:
                 notes = None
             fieldlist = [
@@ -748,7 +748,7 @@ class net(Group):
                 ("Network Route", ipdata.get("ip_range", None)),
                 ("AS Number", ipdata.get("autonomous_system_number", None)),
                 ("AS Organization", f'{ipdata.get("autonomous_system_organization", "null")} | {ipdata.get("autonomous_system_organization_alt", "?")}'),
-                ("Location", f'{ipdata.get("latitude", "null")}, {ipdata.get("longitude", "null")}'),
+                ("Location (lat, long)", f'{ipdata.get("latitude", "null")}, {ipdata.get("longitude", "null")}'),
                 ("Time Zone", ipdata.get("time_zone", None))
             ]
         for field_name, field_value in fieldlist:
