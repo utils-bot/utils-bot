@@ -14,7 +14,6 @@ from jsondb import get_user_whitelist, update_user_whitelist, check_user_whiteli
 from aiohttp import ClientSession
 from logger import CustomFormatter, ilog
 from time import time
-from keep_alive import ka
 from io import BytesIO
 from configs import configurations
 from pyotp import TOTP
@@ -273,20 +272,6 @@ class locsys(Group):
         if not i:
             await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").uniform(interaction), ephemeral=True)
         return i
-    
-    @command(name='update', description='system - update bot repo')
-    @describe(silent = 'Whether you want the output to be sent to you alone or not')
-    async def update_bot(self, interaction: Interaction, silent: bool = False):
-        await interaction.response.defer(ephemeral=silent)
-        if (not configurations.is_replit) or (not configurations.no_git_automation): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on a system that can auto-update itself.').uniform(interaction), ephemeral=silent); return
-        if not await self.is_authorized(interaction): return
-        
-        ilog("Updating git repo...", 'git', 'warning')
-        os.system('git fetch --all')
-        os.system('git reset --hard origin/main')
-        
-        await interaction.followup.send(embed=Embed(title="Done", description='Successfully updated the bot repo on Github.').uniform(interaction), ephemeral=silent)
-
     @command(name='version', description='system - check the code version')
     @describe(silent = 'Whether you want the output to be sent to you alone or not')
     async def version(self, interaction: Interaction, silent: bool = False):
@@ -294,19 +279,6 @@ class locsys(Group):
         if (not configurations.is_replit) or (not configurations.no_git_automation): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on a system that can auto-update itself.').uniform(interaction), ephemeral=silent); return
         if not await self.is_authorized(interaction): return
         await interaction.followup.send(ephemeral=silent, embed=Embed(title = 'Bot version:', description= f'Bot version {configurations.bot_version}').uniform(interaction))
-
-    @command(name='restart', description='system - Restart the bot')
-    @describe(silent = 'Whether you want the output to be sent to you alone or not')
-    async def restartbot(self, interaction: Interaction, silent: bool = True):
-        await interaction.response.defer(ephemeral=silent)
-        if not await self.is_authorized(interaction): return
-        if (not configurations.is_replit): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on non-docker system.').uniform(interaction), ephemeral=silent); return
-        await interaction.followup.send(embed=Embed(title="Received", description="Restart request received, killing docker container...", ).uniform(interaction), ephemeral=silent)
-        ilog(f'[+] Restart request by {interaction.user.id} ({interaction.user.display_name})', 'command', 'info')
-        ilog('Restarting...', 'system', 'critical')
-        await client.change_presence(status=Status.dnd, activity=Game('restarting...'))
-        await asyncio.sleep(5)
-        os.system('kill 1')
 
     @command(name = 'maintenance', description='Toggle maintenance mode for supported commands')
     @describe(status_to_set = 'Status of maintenance to set into the database', silent = 'Whether you want the output to be sent to you alone or not')
@@ -819,26 +791,13 @@ BOOT
 """
 
 
-def build_mode():
-    with open('version.json', 'w+') as f:
-        json.dump({'current_version': configurations.bot_version}, f)
-        ilog(f'Finished updating version to {configurations.bot_version}', 'build', 'info')
 def run():
     # some checks before run, soonTM
     if configurations.using_sentry:
         ilog('Initializing Sentry...', 'init', 'info')
         sentry_sdk.init(dsn=configurations.sentry_dsn, traces_sample_rate=1.0)
         ilog('Sentry is ready!', 'init', 'info')
-    if configurations.is_replit:
-        ilog('Starting flask keep-alive server...', 'init', 'info')
-        ka()
-        ilog('Flask server is ready!', 'init', 'info')
     ilog('Starting Discord client...', 'init', 'info')
     client.run(token = configurations.bot_token, log_formatter=CustomFormatter())
-build = not configurations.not_builder
 if __name__ == '__main__':
-    if not build:
-        run()
-    else:
-        ilog('Running build mode', 'build', 'info')
-        build_mode()
+    run()

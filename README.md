@@ -1,3 +1,4 @@
+*current version: v0.6.2*
 # utils-bot
 
 utils-bot is a discord.py bot packaged with unique features.
@@ -5,13 +6,15 @@ utils-bot is a discord.py bot packaged with unique features.
 ## Deploying
 
 ### You can deploy the bot by yourself:
-0. Clone the repo either download the .zip file or `git clone` it.
+0. Clone the repo: either download the .zip file or `git clone` it.
 
 1. Install dependencies: `python3 -m pip install -r requirements.txt`
 
-2. Setup varibles via `configs.py` file, or edit your machine's environment varibles.
+2. Prepare required APIs, including screenshot, database, ... (you can find in gh/utils-bot repos)
 
-3. Start the application: `sh main.sh`
+3. Setup varibles via `configs.py` file, or edit your machine's environment varibles, based on .env.example file.
+
+4. Start the application: `sh main.sh`
 
 
 ## Usage
