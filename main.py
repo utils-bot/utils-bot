@@ -131,7 +131,7 @@ async def on_error(interaction: Interaction, error: AppCommandError):
     minlog_under800 = minlog[-800:] 
     es = ('Check the console for more information.' if len(minlog) > 800 else '') + f"```py\n{('...' if minlog_under800 != minlog else '') + minlog_under800}```" + f"```py\n{cleaned.splitlines()[-1]}```"
     # if (i:=interaction.user.id) in configurations.owner_guild_id or i in get_whitelist():
-    ilog('Exception in a application command: \n' + full_err + '> END OF TRACEBACK <', logtype= 'error', flag = 'command')
+    ilog(f'Exception in a application command (interactionid:{interaction.id}) from user {interaction.user} ({interaction.user.id}) -> #{interaction.channel} ({interaction.channel_id}) // guildid:{interaction.guild.id} \n' + full_err + '> END OF TRACEBACK <', logtype= 'error', flag = 'command')
     await interaction.followup.send(embed=Embed(title="Exception occurred:", description= es).uniform(interaction)) if not interaction.is_expired() else ilog("discord.Interaction expired on exception message.", flag = "command", logtype = 'warning')
     # else:
         # await interaction.followup.send(embed=Embed(title="Exception occurred", description='Contact the bot owner(s) for more information.', ).uniform(interaction))
