@@ -136,7 +136,7 @@ async def on_error(interaction: Interaction, error: AppCommandError):
     minlog_under800 = minlog[-800:] 
     es = ('Check the console for more information.' if len(minlog) > 800 else '') + f"```py\n{('...' if minlog_under800 != minlog else '') + minlog_under800}```" + f"```py\n{cleaned.splitlines()[-1]}```"
     # if (i:=interaction.user.id) in configurations.owner_guild_id or i in get_whitelist():
-    ilog('Exception in a application command: \n' + full_err + '> END OF TRACEBACK <', logtype= 'error', flag = 'command')
+    ilog(f'Exception in a application command (interactionid:{interaction.id}) from user {interaction.user} ({interaction.user.id}) -> #{interaction.channel} ({interaction.channel_id}) // guildid:{interaction.guild.id} \n' + full_err + '> END OF TRACEBACK <', logtype= 'error', flag = 'command')
     if not dont_feedback:
         await interaction.followup.send(embed=Embed(title="Exception occurred:", description= es).uniform(interaction)) if not interaction.is_expired() else ilog("discord.Interaction expired on exception message.", flag = "command", logtype = 'warning')
     # else:
@@ -183,7 +183,7 @@ class sys(Group):
         i = interaction.user.id in configurations.owner_ids
         if not i:
             embed = Embed(title="Unauthorized", description="You are not allowed to use this command.").uniform(interaction)
-            await interaction.followup.send(embed=embed, ephemeral=True) if followup else await interaction.response.send_message(embed=embed, ephemeral=True)
+            (await interaction.followup.send(embed=embed, ephemeral=True)) if followup else (await interaction.response.send_message(embed=embed, ephemeral=True))
         return i
     class evalModal(Modal, title='System eval()'):
         def __init__(self, main) -> None:
@@ -466,6 +466,7 @@ class game_wordle():
 class game(Group):
     @staticmethod
     async def is_authorized(interaction: Interaction):
+        global maintenance_status
         if maintenance_status:
             await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction))
             return False
@@ -497,30 +498,29 @@ tree.add_command(game())
 class tool(Group):
     @staticmethod
     async def is_authorized(interaction: Interaction, followup: bool = True):
-        check = True
-        embed = None
-        while True:
-            if interaction.user.id in configurations.owner_ids:
-                return True
-            if maintenance_status:
-                embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction)
-                check = False
-                break
-            elif not interaction.guild_id is not None:
-                embed = Embed(title='Error', description='This command can only be used in a server.').uniform(interaction)
-                check = False
-                break
-            elif not interaction.guild_id in [guild.id for guild in client.guilds]:
-                embed = Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').uniform(interaction)
-                check = False
-                break
-            elif not await check_user_whitelist(user = interaction.user.id):
-                embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access; try asking a developer to whitelist you.').uniform(interaction)
-                check = False
-                break
-        if not check:
-            await interaction.followup.send(embed=embed, ephemeral=True) if followup else await interaction.response.send_message(embed=embed, ephemeral=True)
-        return check
+        global maintenance_status
+        
+        if interaction.user.id in configurations.owner_ids:
+            return True
+        elif maintenance_status:
+            embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction)
+            authorized = False
+        elif interaction.guild_id is None:
+            embed = Embed(title='Error', description='This command can only be used in a server.').uniform(interaction)
+            authorized = False
+        elif interaction.guild_id not in [guild.id for guild in client.guilds]:
+            embed = Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').uniform(interaction)
+            authorized = False
+        elif not await check_user_whitelist(user = interaction.user.id):
+            embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access; try asking a developer to whitelist you.').uniform(interaction)
+            authorized = False
+        else:
+            authorized = True
+        
+        
+        if not authorized:
+            (await interaction.followup.send(embed=embed, ephemeral=True)) if followup else (await interaction.response.send_message(embed=embed, ephemeral=True))
+        return authorized
     @staticmethod
     def getTOTP(secret: str):
         try:
@@ -555,7 +555,7 @@ class tool(Group):
         global bard
         if question == '':
             if not await self.is_authorized(interaction, False): return
-            modal = self.evalModal(self)
+            modal = self.askbardModal(self)
             await interaction.response.send_modal(modal)
             await modal.wait()
             question = modal.result
@@ -574,6 +574,7 @@ tree.add_command(tool())
 class net(Group):
     @staticmethod
     async def is_authorized(interaction: Interaction):
+        global maintenance_status
         if maintenance_status:
             await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction))
             return False

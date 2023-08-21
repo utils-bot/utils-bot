@@ -5,7 +5,7 @@ class configurations:
     bot_support_server = environ.get('bot_support_server', 'https://discord.gg/')
     owner_ids = [806432782111735818]
     owner_guild_id = 1070724751284256939
-    beta = True
+    beta = False
     max_global_ratelimit = 2
     default_maintenance_status = False  # ignore
     using_sentry = environ.get('USING_SENTRY', 'leave_blank_for_false/anything_else_for_true') == "YES"
