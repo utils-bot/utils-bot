@@ -551,6 +551,7 @@ class tool(Group):
     
     @command(name='askbard', description='BETA - Ask GoogleBard a question.')
     @describe(question = 'The question you want to ask', silent = 'Whether you want the output to be sent to you alone or not')
+    @cooldown(1, 7, key = lambda interaction: (interaction.user.id, time() if interaction.user.id in configurations.owner_ids else 0)) # unique cooldown object if the user is the owner
     async def askbard(self, interaction: Interaction, question: str = '', silent: bool = False):
         global bard
         if question == '':
