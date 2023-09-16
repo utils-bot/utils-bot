@@ -14,10 +14,10 @@ from jsondb import get_user_whitelist, update_user_whitelist, check_user_whiteli
 from aiohttp import ClientSession
 from logger import CustomFormatter, ilog
 from time import time
-from keep_alive import ka
 from io import BytesIO
-from configs import configurations
+from configs import configurations, assets
 from pyotp import TOTP
+from bardapi import BardAsync
 
 """
 -------------------------------------------------
@@ -57,6 +57,7 @@ class MyClient(Client):
         global unix_uptime
         global global_ratelimit
         global maintenance_status
+        global bard
         global_ratelimit = 0
         maintenance_status = configurations.default_maintenance_status
         unix_uptime = round(time())
@@ -69,6 +70,9 @@ class MyClient(Client):
         try: 
             for task in self.taskloops(): task.start()
         except BaseException: pass
+
+        ilog("Initializing Bard API...", 'client.setup_hook', 'info')
+        bard = BardAsync(token=configurations.bardapi_1psid_token)
         ilog("Done! Bot will be ready soon", 'client.setup_hook', 'info')
         await asyncio.sleep(3)
         return
@@ -98,7 +102,6 @@ DiscordWebSocket.from_client = MyDiscordWebSocket.from_client
 client = MyClient(intents=intents)
 tree = client.tree
 
-
 class Embed(discordEmbed):
     def uniform(self, interaction):
         self.set_footer(text = f'Requested by {interaction.user.name}#{interaction.user.discriminator}', icon_url=interaction.user.avatar)
@@ -119,10 +122,11 @@ APPLICATION ERROR HANDLER
 -------------------------------------------------"""
 @tree.error
 async def on_error(interaction: Interaction, error: AppCommandError):
+    dont_feedback = False
     if interaction.user.id not in configurations.owner_ids:
         await interaction.followup.send(embed=Embed(title="Exception occurred:", description= 'Ask the developer of the bot for more information.').uniform(interaction)) if not interaction.is_expired() else ilog("discord.Interaction expired on exception message.", flag = "command", logtype = 'warning')
-        return
-    if isinstance(error, CommandOnCooldown):
+        dont_feedback = True
+    elif isinstance(error, CommandOnCooldown):
         if not interaction.response.is_done(): await interaction.response.defer()
         await interaction.followup.send(embed=Embed(title="You can't use this command right now", description= "Command on cooldown. Try again in " + str(round(error.retry_after, 2)) + " seconds.").uniform(interaction)) if not interaction.is_expired() else ilog("discord.Interaction expired on exception message.", flag = "command", logtype = 'warning')
         return
@@ -132,26 +136,14 @@ async def on_error(interaction: Interaction, error: AppCommandError):
     minlog_under800 = minlog[-800:] 
     es = ('Check the console for more information.' if len(minlog) > 800 else '') + f"```py\n{('...' if minlog_under800 != minlog else '') + minlog_under800}```" + f"```py\n{cleaned.splitlines()[-1]}```"
     # if (i:=interaction.user.id) in configurations.owner_guild_id or i in get_whitelist():
-    ilog('Exception in a application command: \n' + full_err + '> END OF TRACEBACK <', logtype= 'error', flag = 'command')
-    await interaction.followup.send(embed=Embed(title="Exception occurred:", description= es).uniform(interaction)) if not interaction.is_expired() else ilog("discord.Interaction expired on exception message.", flag = "command", logtype = 'warning')
+    ilog(f'Exception in a application command (interactionid:{interaction.id}) from user {interaction.user} ({interaction.user.id}) -> #{interaction.channel} ({interaction.channel_id}) // guildid:{interaction.guild.id} \n' + full_err + '> END OF TRACEBACK <', logtype= 'error', flag = 'command')
+    if not dont_feedback:
+        await interaction.followup.send(embed=Embed(title="Exception occurred:", description= es).uniform(interaction)) if not interaction.is_expired() else ilog("discord.Interaction expired on exception message.", flag = "command", logtype = 'warning')
     # else:
         # await interaction.followup.send(embed=Embed(title="Exception occurred", description='Contact the bot owner(s) for more information.', ).uniform(interaction))
 
 """-------------------------------------------------
 BASE COMMANDS
-/sync
-/sys
-|-- eval
-|-- guilds
-|-- whitelist
-    |-- list
-    |-- modify
-
-/locsys
-|-- update
-|-- version
-|-- restart
-|-- maintenance
 -------------------------------------------------""" 
 
 @tree.command(name='sync', description='system - sync all commands to all guilds manually')#, guild=Object(id=configurations.owner_guild_id))
@@ -191,7 +183,7 @@ class sys(Group):
         i = interaction.user.id in configurations.owner_ids
         if not i:
             embed = Embed(title="Unauthorized", description="You are not allowed to use this command.").uniform(interaction)
-            await interaction.followup.send(embed=embed, ephemeral=True) if followup else await interaction.response.send_message(embed=embed, ephemeral=True)
+            (await interaction.followup.send(embed=embed, ephemeral=True)) if followup else (await interaction.response.send_message(embed=embed, ephemeral=True))
         return i
     class evalModal(Modal, title='System eval()'):
         def __init__(self, main) -> None:
@@ -215,7 +207,7 @@ class sys(Group):
             await modal.wait()
             script = modal.result
         else:
-            await interaction.response.defer(ephemeral=silent)
+            await interaction.response.defer(ephemeral=True)
             if not await self.is_authorized(interaction): return
         await interaction.followup.send(embed=Embed(title='Executing...', description='Executing the script...').uniform(interaction), wait=True, ephemeral=True)
         await asyncio.sleep(0.5)
@@ -273,20 +265,6 @@ class locsys(Group):
         if not i:
             await interaction.followup.send(embed=Embed(title="Unauthorized", description="You are not allowed to use this command.").uniform(interaction), ephemeral=True)
         return i
-    
-    @command(name='update', description='system - update bot repo')
-    @describe(silent = 'Whether you want the output to be sent to you alone or not')
-    async def update_bot(self, interaction: Interaction, silent: bool = False):
-        await interaction.response.defer(ephemeral=silent)
-        if (not configurations.is_replit) or (not configurations.no_git_automation): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on a system that can auto-update itself.').uniform(interaction), ephemeral=silent); return
-        if not await self.is_authorized(interaction): return
-        
-        ilog("Updating git repo...", 'git', 'warning')
-        os.system('git fetch --all')
-        os.system('git reset --hard origin/main')
-        
-        await interaction.followup.send(embed=Embed(title="Done", description='Successfully updated the bot repo on Github.').uniform(interaction), ephemeral=silent)
-
     @command(name='version', description='system - check the code version')
     @describe(silent = 'Whether you want the output to be sent to you alone or not')
     async def version(self, interaction: Interaction, silent: bool = False):
@@ -294,19 +272,6 @@ class locsys(Group):
         if (not configurations.is_replit) or (not configurations.no_git_automation): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on a system that can auto-update itself.').uniform(interaction), ephemeral=silent); return
         if not await self.is_authorized(interaction): return
         await interaction.followup.send(ephemeral=silent, embed=Embed(title = 'Bot version:', description= f'Bot version {configurations.bot_version}').uniform(interaction))
-
-    @command(name='restart', description='system - Restart the bot')
-    @describe(silent = 'Whether you want the output to be sent to you alone or not')
-    async def restartbot(self, interaction: Interaction, silent: bool = True):
-        await interaction.response.defer(ephemeral=silent)
-        if not await self.is_authorized(interaction): return
-        if (not configurations.is_replit): await interaction.followup.send(embed=Embed(title="Unsupported", description='The bot is deployed on non-docker system.').uniform(interaction), ephemeral=silent); return
-        await interaction.followup.send(embed=Embed(title="Received", description="Restart request received, killing docker container...", ).uniform(interaction), ephemeral=silent)
-        ilog(f'[+] Restart request by {interaction.user.id} ({interaction.user.display_name})', 'command', 'info')
-        ilog('Restarting...', 'system', 'critical')
-        await client.change_presence(status=Status.dnd, activity=Game('restarting...'))
-        await asyncio.sleep(5)
-        os.system('kill 1')
 
     @command(name = 'maintenance', description='Toggle maintenance mode for supported commands')
     @describe(status_to_set = 'Status of maintenance to set into the database', silent = 'Whether you want the output to be sent to you alone or not')
@@ -326,12 +291,6 @@ tree.add_command(sys())
 """
 -------------------------------------------------
 FEATURE COMMANDS (beta)
-/game
-    |-- wordle
-/net
-    |-- screenshot
-    |-- ip
-    |-- deshorten
 -------------------------------------------------
 """
 
@@ -416,10 +375,13 @@ class game_wordle():
     def guess(this) -> None:
         return this.guessModal(this)
     async def won(this) -> None:
+        global bard
         embed = Embed(title="Wordle")
         embed.description = f"**You won with {this.tries} trie(s) left!** :heart:\nThe secret word was: `{this.secret_word}`\nYour guesses: ```\n" + "\n".join(this.tried) + "```"
         underline = "\n"
-        embed.add_field(name = "*Analysis*", value = f"""*Secret word difficulty*: *<comming soon>*\n*Guess efficiency*: \n```{underline.join(map(lambda x: str(x) + "%", this.tried_efficiency))}```""")
+        bard_call = await bard.get_answer(f"Rate the difficulty on a scale of 1 to 10 of the word: {this.secret_word}")
+        word_diff = bard_call['content']
+        embed.add_field(name = "*Analysis*", value = f"""- *Secret word difficulty*: *{word_diff}*\n- *Guess efficiency*: \n{underline.join(map(lambda x: str(x) + "%", this.tried_efficiency))}""")
         embed.uniform(this.interaction)
         await this.interaction.edit_original_response(embed = embed, view = None)
         # GAME ENdED
@@ -427,7 +389,9 @@ class game_wordle():
         embed = Embed(title="Wordle")
         embed.description = f"**You lost!** :joy: \nThe secret word was: `{this.secret_word}`\nYour guesses: ```\n" + "\n".join(this.tried) + "```"
         underline = '\n'
-        embed.add_field(name = "*Analysis*", value = f"""- *Secret word difficulty*: *<comming soon>*\n- *Guess efficiency*: ```{underline.join(map(lambda x: str(x) + "%", this.tried_efficiency))}```""")
+        bard_call = await bard.get_answer(f"Rate the difficulty on a scale of 1 to 10 of the word: {this.secret_word}")
+        word_diff = bard_call['content']
+        embed.add_field(name = "*Analysis*", value = f"""- *Secret word difficulty*: *{word_diff}*\n- *Guess efficiency*: \n{underline.join(map(lambda x: str(x) + "%", this.tried_efficiency))}""")
         embed.uniform(this.interaction)
         await this.interaction.edit_original_response(embed = embed, view = None)
     
@@ -502,6 +466,7 @@ class game_wordle():
 class game(Group):
     @staticmethod
     async def is_authorized(interaction: Interaction):
+        global maintenance_status
         if maintenance_status:
             await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction))
             return False
@@ -532,22 +497,30 @@ tree.add_command(game())
 
 class tool(Group):
     @staticmethod
-    async def is_authorized(interaction: Interaction):
-        if maintenance_status:
-            await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction))
-            return False
+    async def is_authorized(interaction: Interaction, followup: bool = True):
+        global maintenance_status
+        
         if interaction.user.id in configurations.owner_ids:
             return True
-        elif not interaction.guild_id is not None:
-            await interaction.followup.send(embed=Embed(title='Error', description='This command can only be used in a server.').uniform(interaction))
-            return False
-        elif not interaction.guild_id in [guild.id for guild in client.guilds]:
-            await interaction.followup.send(embed=Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').uniform(interaction))
-            return False
+        elif maintenance_status:
+            embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction)
+            authorized = False
+        elif interaction.guild_id is None:
+            embed = Embed(title='Error', description='This command can only be used in a server.').uniform(interaction)
+            authorized = False
+        elif interaction.guild_id not in [guild.id for guild in client.guilds]:
+            embed = Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').uniform(interaction)
+            authorized = False
         elif not await check_user_whitelist(user = interaction.user.id):
-            await interaction.followup.send(embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access; try asking a developer to whitelist you.').uniform(interaction))
-            return False
-        return True
+            embed = Embed(title='Unauthorized', description='This command is in beta mode, only whitelisted user can access; try asking a developer to whitelist you.').uniform(interaction)
+            authorized = False
+        else:
+            authorized = True
+        
+        
+        if not authorized:
+            (await interaction.followup.send(embed=embed, ephemeral=True)) if followup else (await interaction.response.send_message(embed=embed, ephemeral=True))
+        return authorized
     @staticmethod
     def getTOTP(secret: str):
         try:
@@ -557,17 +530,52 @@ class tool(Group):
         return result
     @command(name='totp', description='BETA - Instantly generate a TOTP code from your secret.') 
     @describe(secret = 'The secret key for TOTP', silent = 'Whether you want the output to be sent to you alone or not')
-    async def totp(self, interaction: Interaction, secret: str, silent: bool = True):
+    async def totp(self, interaction: Interaction, secret: str, silent: bool = False):
         secret = secret.replace(' ', '')
         await interaction.response.defer(ephemeral=silent)
         if not await self.is_authorized(interaction): return
         await interaction.followup.send(embed=Embed(title='TOTP', description=f'`{self.getTOTP(secret)}`').uniform(interaction), ephemeral=silent)
+    
+    class askbardModal(Modal, title='Ask your question:'):
+        def __init__(self, main) -> None:
+            super().__init__()
+            self.main = main
+            self.result = ""
+        script = TextInput(label = 'Your question:', style = TextStyle.paragraph, max_length = 2000, required=True, placeholder="Enter your question here...")
+        async def on_submit(self, interaction: Interaction):
+            await interaction.response.defer()
+            inp = str(self.script)
+            self.result = inp
+            self.stop()
+
+    
+    @command(name='askbard', description='BETA - Ask GoogleBard a question.')
+    @describe(question = 'The question you want to ask', silent = 'Whether you want the output to be sent to you alone or not')
+    @cooldown(1, 7, key = lambda interaction: (interaction.user.id, time() if interaction.user.id in configurations.owner_ids else 0)) # unique cooldown object if the user is the owner
+    async def askbard(self, interaction: Interaction, question: str = '', silent: bool = False):
+        global bard
+        if question == '':
+            if not await self.is_authorized(interaction, False): return
+            modal = self.askbardModal(self)
+            await interaction.response.send_modal(modal)
+            await modal.wait()
+            question = modal.result
+        else:
+            await interaction.response.defer(ephemeral=silent)
+            if not await self.is_authorized(interaction): return
+        bard_answer = await bard.get_answer(question)
+        answer = bard_answer['content']
+        if len(question) > 255: question = question[:252] + '...'
+        embed = Embed(title = question, description = answer).uniform(interaction)
+        embed.set_author(name = "Bard", icon_url = assets.google_bard_avatar, url = "https://bard.google.com")
+        await interaction.followup.send(embed=embed, ephemeral=silent)
 
 tree.add_command(tool())
 
 class net(Group):
     @staticmethod
     async def is_authorized(interaction: Interaction):
+        global maintenance_status
         if maintenance_status:
             await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction))
             return False
@@ -819,26 +827,13 @@ BOOT
 """
 
 
-def build_mode():
-    with open('version.json', 'w+') as f:
-        json.dump({'current_version': configurations.bot_version}, f)
-        ilog(f'Finished updating version to {configurations.bot_version}', 'build', 'info')
 def run():
     # some checks before run, soonTM
     if configurations.using_sentry:
         ilog('Initializing Sentry...', 'init', 'info')
         sentry_sdk.init(dsn=configurations.sentry_dsn, traces_sample_rate=1.0)
         ilog('Sentry is ready!', 'init', 'info')
-    if configurations.is_replit:
-        ilog('Starting flask keep-alive server...', 'init', 'info')
-        ka()
-        ilog('Flask server is ready!', 'init', 'info')
     ilog('Starting Discord client...', 'init', 'info')
     client.run(token = configurations.bot_token, log_formatter=CustomFormatter())
-build = not configurations.not_builder
 if __name__ == '__main__':
-    if not build:
-        run()
-    else:
-        ilog('Running build mode', 'build', 'info')
-        build_mode()
+    run()
