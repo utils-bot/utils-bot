@@ -200,7 +200,7 @@ class sys(Group):
     @command(name='eval', description='system - execute python scripts via eval()')
     @describe(silent = 'Whether you want the output to be sent to you alone or not', script = 'The script you want to execute, leave blank if you want a modal ask for the code. (which can be multi-line-ed)', awaited = '(default: Auto) If you want to turn the script into a coroutine that runs asynchronously')
     @choices(awaited=[Choice(value=i, name=k) for i, k in [(1, "True"), (0, "False"), (-1, "Auto")]])
-    async def scripteval(self, interaction: Interaction, script: str = '', awaited = -1, silent: bool = False):
+    async def scripteval(self, interaction: Interaction, script: str = '', awaited: int = -1, silent: bool = False):
         if script == '':
             if not await self.is_authorized(interaction, False): return
             modal = self.evalModal(self)
