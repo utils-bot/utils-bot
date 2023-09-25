@@ -18,7 +18,7 @@ from io import BytesIO
 from configs import configurations, assets
 from pyotp import TOTP
 from bardapi import BardAsync
-
+from inspect import isawaitable
 """
 -------------------------------------------------
 DEFINING VARS
@@ -198,8 +198,8 @@ class sys(Group):
             self.stop()
 
     @command(name='eval', description='system - execute python scripts via eval()')
-    @describe(silent = 'Whether you want the output to be sent to you alone or not', script = 'The script you want to execute, leave blank if you want a modal ask for the code. (which can be multi-line-ed)', awaited = '(default: False) If you want to turn the script into a coroutine that runs asynchronously')
-    async def scripteval(self, interaction: Interaction, script: str = '', awaited: bool = False, silent: bool = False):
+    @describe(silent = 'Whether you want the output to be sent to you alone or not', script = 'The script you want to execute, leave blank if you want a modal ask for the code. (which can be multi-line-ed)', awaited = '(default: Auto) If you want to turn the script into a coroutine that runs asynchronously')
+    async def scripteval(self, interaction: Interaction, script: str = '', awaited: bool = 'AUTO', silent: bool = False):
         if script == '':
             if not await self.is_authorized(interaction, False): return
             modal = self.evalModal(self)
@@ -212,6 +212,7 @@ class sys(Group):
         await interaction.followup.send(embed=Embed(title='Executing...', description='Executing the script...').uniform(interaction), wait=True, ephemeral=True)
         await asyncio.sleep(0.5)
         ilog(f'{interaction.user.name}#{interaction.user.discriminator} ({interaction.user.id}) eval-ed: {script}', 'eval', 'warning')
+        if awaited == 'AUTO': awaited = isawaitable(script)
         if not awaited: result = eval(script)
         else: result = await eval(script)
         if not result: await interaction.followup.send(ephemeral=silent, embed=Embed(title="Script executed", description='Script executed successfully, the result, might be `None` or too long to fill in here.').uniform(interaction))
@@ -749,19 +750,19 @@ class net(Group):
                 ("Notes", notes),
                 ("IP", ipdata.get("ip", None)),
                 ("Continent", f'{ipdata.get("continent_name", "null")} | {ipdata.get("continent_code", "null")}'),
-                ("Country", f'{ipdata.get("country_name", "null")} | {ipdata.get("country_code", "null")} {ipdata.get("country_flag_emoji", "?")}'),
+                ("Country", f'{ipdata.get("country_name", "null")} | {ipdata.get("country_code", "null")} {ipdata.get("country_flag_emoji", "-")}'),
                 ("City", ipdata.get("city_name", None)),
                 ("Region", f'{ipdata.get("region_name", "null")} | {ipdata.get("region_code", "null")}'),
                 ("\u200B", "\n"),  # blank field separator
                 ("Network Route", ipdata.get("ip_range", None)),
                 ("AS Number", ipdata.get("autonomous_system_number", None)),
-                ("AS Organization", f'{ipdata.get("autonomous_system_organization", "null")} | {ipdata.get("autonomous_system_organization_alt", "?")}'),
+                ("AS Organization", f'{ipdata.get("autonomous_system_organization", "null")} | {ipdata.get("autonomous_system_organization_alt", "-")}'),
                 ("Location (lat, long)", f'{ipdata.get("latitude", "null")}, {ipdata.get("longitude", "null")}'),
                 ("Time Zone", ipdata.get("time_zone", None))
             ]
         for field_name, field_value in fieldlist:
             if field_value is None or "null" in str(field_value): continue
-            embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=False)
+            embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=True)
         embed.uniform(interaction)
         await interaction.followup.send(embed = embed, ephemeral=silent)
     @command(name = 'unshortener', description='Capture redirects from a URL and return the final URL.')
