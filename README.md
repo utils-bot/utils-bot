@@ -1,4 +1,4 @@
-*current version: v0.7*
+*current version: v0.7.1*
 # utils-bot
 
 utils-bot is a discord.py bot packaged with unique features.
