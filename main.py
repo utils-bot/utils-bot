@@ -199,7 +199,8 @@ class sys(Group):
 
     @command(name='eval', description='system - execute python scripts via eval()')
     @describe(silent = 'Whether you want the output to be sent to you alone or not', script = 'The script you want to execute, leave blank if you want a modal ask for the code. (which can be multi-line-ed)', awaited = '(default: Auto) If you want to turn the script into a coroutine that runs asynchronously')
-    async def scripteval(self, interaction: Interaction, script: str = '', awaited: bool = 'AUTO', silent: bool = False):
+    @choices(awaited=[Choice(value=i, name=k) for i, k in [(1, "True"), (0, "False"), (-1, "Auto")]])
+    async def scripteval(self, interaction: Interaction, script: str = '', awaited = -1, silent: bool = False):
         if script == '':
             if not await self.is_authorized(interaction, False): return
             modal = self.evalModal(self)
@@ -212,7 +213,7 @@ class sys(Group):
         await interaction.followup.send(embed=Embed(title='Executing...', description='Executing the script...').uniform(interaction), wait=True, ephemeral=True)
         await asyncio.sleep(0.5)
         ilog(f'{interaction.user.name}#{interaction.user.discriminator} ({interaction.user.id}) eval-ed: {script}', 'eval', 'warning')
-        if awaited == 'AUTO': awaited = isawaitable(script)
+        awaited = True if awaited == 1 else False if awaited == 0 else isawaitable(script)
         if not awaited: result = eval(script)
         else: result = await eval(script)
         if not result: await interaction.followup.send(ephemeral=silent, embed=Embed(title="Script executed", description='Script executed successfully, the result, might be `None` or too long to fill in here.').uniform(interaction))
