@@ -1,7 +1,11 @@
-*current version: v0.7.1*
+*current version: v0.8*
 # utils-bot
 
 utils-bot is a discord.py bot packaged with unique features.
+
+## Changelogs on v0.8:
+- Image support for /tool askbard
+- Make the environment variables more flexible
 
 ## Deploying
 
@@ -26,4 +30,4 @@ to discuss what you would like to change.
 
 ## License
 
-This project is protected by [MIT license](https://choosealicense.com/licenses/mit/), click hyperlink for more information.
+This project is protected by [MIT license](https://choosealicense.com/licenses/mit/)..
