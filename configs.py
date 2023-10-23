@@ -1,7 +1,9 @@
 from os import environ
 from json import loads
+from typing import Literal
 class configurations:
-    bot_version = 'v0.8' # ignore
+    bot_version = 'v0.8.1' # ignore
+    logging_level: Literal['debug', 'info', 'warning', 'error', 'critical'] = 'debug'
 
     bot_token = environ.get('bot_token', 'replace_with_your_own_token')
     bot_support_server = environ.get('bot_support_server', 'https://discord.gg/')
