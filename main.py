@@ -3,16 +3,19 @@ Check .env.example to setup the bot.
 ---------------------------------------------"""
 
 
+from re import match, Match, Pattern
 import typing, traceback, asyncio, json, sentry_sdk, sys as sysio, os, platform, psutil, binascii
-from discord import Intents, Client, Interaction, Object, Embed as discordEmbed, File, Game, Status, Member, Webhook, ButtonStyle, TextStyle, Activity, ActivityType, Color, Attachment
+from typing import Any, Coroutine, Optional, Type
+from discord import Intents, Client, Interaction, Object, Embed as discordEmbed, File, Game, Status, Member, Webhook, ButtonStyle, TextStyle, Activity, ActivityType, Color, Attachment, PartialEmoji, __version__ as discordversion
 from discord.errors import NotFound, Forbidden, HTTPException
 from discord.app_commands import CommandTree, Group, command, Choice, choices, describe, Range, AppCommandError, rename
 from discord.app_commands.checks import cooldown
 from discord.app_commands.errors import CommandOnCooldown
 from discord.gateway import DiscordWebSocket
 from discord.ui import button, View, Modal, Button, TextInput
+#from discord.ui.dynamic import DynamicItem
 from discord.ext import tasks
-from jsondb import get_user_whitelist, update_user_whitelist, check_user_whitelist
+from db import get_user_whitelist, update_user_whitelist, check_user_whitelist
 from aiohttp import ClientSession
 from logger import CustomFormatter, ilog
 from time import time
@@ -40,19 +43,18 @@ class MyBardAsync(BardAsync):
         self.client = AsyncClient(http2=True, headers=SESSION_HEADERS, cookies=self.cookie_dict, timeout=self.timeout, proxies=self.proxies)
         return
 
-
 class MobileDiscordWebSocket(DiscordWebSocket):
     async def send_as_json(self, data):
         if (data.get('op') == self.IDENTIFY) and (data.get('d', {}).get('properties', {}).get('browser') is not None):
                 data['d']['properties']['browser'] = data['d']['properties']['device'] = 'Discord iOS'
         await super().send_as_json(data)
 
-class MyClient(Client):
+class UtilsBotClient(Client):
     def __init__(self, *, intents: Intents = Intents.default()) -> None:
         super().__init__(intents=intents)
         self.tree = CommandTree(self)
         return
-    @tasks.loop(seconds=10)
+    @tasks.loop(seconds=30)
     async def presence_update(self):
         "Update bot presence"
         global unix_uptime
@@ -60,15 +62,17 @@ class MyClient(Client):
         await self.wait_until_ready()
         # Do loops
         await self.change_presence(activity=Activity(type=ActivityType.watching, name=f'{len(self.guilds)} guilds'), status=Status.online)
-        await asyncio.sleep(30)
-        await self.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
-        await asyncio.sleep(30)
-        await self.change_presence(activity=Activity(type=ActivityType.watching, name=f'latency {round(self.latency*1000)}ms'), status=Status.online)
-        await asyncio.sleep(30)
+        await asyncio.sleep(20)
+        try:
+            await self.change_presence(activity=Activity(type=ActivityType.watching, name=f'latency {round(self.latency*1000)}ms'), status=Status.online)
+        except OverflowError: pass
+        await asyncio.sleep(20)
         await self.change_presence(activity=Activity(type=ActivityType.watching, name=f'@khoi1908vn /w vscode for >3h'), status=Status.online)
-        await asyncio.sleep(30)
+        await asyncio.sleep(20)
         await self.change_presence(activity=Activity(type=ActivityType.watching, name=f'@tudubucket /w vscode for >3h'), status=Status.online)
-        await asyncio.sleep(10)
+        await asyncio.sleep(20)
+        await self.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
+        await asyncio.sleep(20)
     def taskloops(self): return [self.presence_update]
 
     async def setup_hook(self):
@@ -93,6 +97,8 @@ class MyClient(Client):
 
         ilog("Initializing Bard API...", 'client.setup_hook', 'info')
         bard = MyBardAsync(token=configurations.bardapi_1psid_token, token_1PSIDTS=configurations.bardapi_1psidts_token)
+        ilog("Adding listeners to Discord items...", 'client.setup_hook', 'info')
+        # self.add_dynamic.item(tool.staticRequestAnotherTOTP)
         ilog("Done! Bot will be ready soon", 'client.setup_hook', 'info')
         await asyncio.sleep(3)
         return
@@ -105,12 +111,11 @@ class MyClient(Client):
         ilog(f"Bot is currently on version {configurations.bot_version}", 'client.on_ready', 'info')
         ilog(str(self.user) + ' has connected to Discord.', 'client.on_ready', 'info')
         guilds_num = len(self.guilds)
-        members_num = len(set(member for guild in self.guilds for member in guild.members))
         ilog('Connected to ' + str(guilds_num) + ' guilds', 'client.on_ready', 'info')
         await asyncio.sleep(5)
         await self.change_presence(activity=Game('version ' + configurations.bot_version), status=Status.online)
         ilog(f"Developer IDs: {configurations.dev_ids}", 'client.on_ready', 'info')
-        ilog('Done! Successfully started the bot!', 'client.on_ready', 'info')
+        ilog(f'Done! Successfully started the bot! In {round(time()-unix_uptime)}ms.', 'client.on_ready', 'info')
 
     async def on_error(self, event_method, *args, **kwargs):
         "Handle exceptions"
@@ -120,7 +125,7 @@ class MyClient(Client):
 
 intents = Intents.default()
 DiscordWebSocket.from_client = MobileDiscordWebSocket.from_client
-client = MyClient(intents=intents)
+client = UtilsBotClient(intents=intents)
 tree = client.tree
 
 class Embed(discordEmbed):
@@ -147,19 +152,22 @@ async def on_error(interaction: Interaction, error: AppCommandError):
     if isinstance(error, NotFound):
         ilog("discord.NotFound momento, err below", flag = "command", logtype = 'error')
         dont_feedback = True
+    elif isinstance(error, HTTPException):
+        ilog("discord.HTTPException momento, err below", flag = "command", logtype = 'error')
+        dont_feedback = True
     else:
         if not interaction.response.is_done(): await interaction.response.defer()
         if isinstance(error, CommandOnCooldown):
             await interaction.followup.send(embed=Embed(title="You can't use this command right now", description= "Command on cooldown. Try again in " + str(round(error.retry_after, 2)) + " seconds.").uniform(interaction)) if not interaction.is_expired() else ilog("discord.Interaction expired on exception message.", flag = "command", logtype = 'warning')
             return
-        if isinstance(error, NotFound):
-            ilog("discord.NotFound !!", flag = "command", logtype = 'warning')
-            return
         elif isinstance(error, Forbidden):
             await interaction.followup.send(embed=Embed(title="Forbidden.", description= "Discord is not allowing me to continue.").uniform(interaction)) if not interaction.is_expired() else ilog("discord.Interaction expired on exception message.", flag = "command", logtype = 'warning')
             return
         elif interaction.user.id not in configurations.dev_ids:
-            await interaction.followup.send(embed=Embed(title="Uncaught exception occurred:", description= 'Ask the developer of the bot for more information.').uniform(interaction)) if not interaction.is_expired() else ilog("discord.Interaction expired on exception message.", flag = "command", logtype = 'warning')
+            embed = Embed(title="Uncaught exception occurred:", description= 'Everything has been logged properly. Please ask a developer for more information.').uniform(interaction)
+            view = View()
+            view.add_item(Button(label='Join support server', style=ButtonStyle.link, url=configurations.bot_support_server))
+            await interaction.followup.send(embed=embed) if not interaction.is_expired() else ilog("discord.Interaction expired on exception message.", flag = "command", logtype = 'warning')
             dont_feedback = True
     
     full_err = traceback.format_exc()
@@ -402,33 +410,24 @@ class game_wordle():
                 except Exception as e:
                     success = False
         return {"word": word, "success": success}
-    
     def start(this) -> None:
         return this.startView(this)
     def play(this) -> None:
         return this.gameplayView(this)
     def guess(this) -> None:
         return this.guessModal(this)
-    async def won(this) -> None:
+    async def end(this, won: bool) -> None:
         global bard
         await this.interaction.edit_original_response(embed = Embed(title="Worldle", description="Calculating the result..."), view = None)
         embed = Embed(title="Wordle")
-        embed.description = f"**You won with {this.tries} trie(s) left!** :heart:\nThe secret word was: `{this.secret_word}`\nYour guesses: ```\n" + "\n".join(this.tried) + "```"
-        underline = "\n"
-        bard_call = await bard.get_answer(f"Rate the difficulty on a scale of 1 to 10 of the word: {this.secret_word}")
-        word_diff = bard_call['content']
-        embed.add_field(name = "*Analysis*", value = f"""- *Secret word difficulty*: *{word_diff}*\n- *Guess efficiency*: \n{underline.join(map(lambda x: str(x) + "%", this.tried_efficiency))}""")
-        embed.uniform(this.interaction)
-        await this.interaction.edit_original_response(embed = embed, view = None)
-        # GAME ENdED
-    async def lost(this) -> None:
-        global bard
-        await this.interaction.edit_original_response(embed = Embed(title="Worldle", description="Calculating the result..."), view = None)
-        embed = Embed(title="Wordle")
-        embed.description = f"**You lost!** :joy: \nThe secret word was: `{this.secret_word}`\nYour guesses: ```\n" + "\n".join(this.tried) + "```"
+        if won:
+            embed.description = f"**You won with {this.tries} trie(s) left!** :heart:\nThe secret word was: `{this.secret_word}`\nYour guesses: ```\n" + "\n".join(this.tried) + "```"
+        else:
+            embed.description = f"**You lost!** :joy: \nThe secret word was: `{this.secret_word}`\nYour guesses: ```\n" + "\n".join(this.tried) + "```"
         underline = '\n'
-        bard_call = await bard.get_answer(f"Rate the difficulty on a scale of 1 to 10 of the word: {this.secret_word}")
+        bard_call = await bard.get_answer(f"In 500-1000 character, rate the difficulty on a scale of 1 to 10 of the word: {this.secret_word}")
         word_diff = bard_call['content']
+        if word_diff > 4096: word_diff = word_diff[:4093] + "..."
         embed.add_field(name = "*Analysis*", value = f"""- *Secret word difficulty*: *{word_diff}*\n- *Guess efficiency*: \n{underline.join(map(lambda x: str(x) + "%", this.tried_efficiency))}""")
         embed.uniform(this.interaction)
         await this.interaction.edit_original_response(embed = embed, view = None)
@@ -456,13 +455,13 @@ class game_wordle():
             self.main.tried.append(compared.get("comparision"))
             self.main.tried_efficiency.append(compared.get("efficiency"))
             if compared.get("won", False):
-                await self.main.won() # END GAME
+                await self.main.end(won=True) # END GAME
                 return
             if self.main.tries > 0:
                 await self.main.gameplay() # back to gameplay
                 return
             else:
-                await self.main.lost() # END GAME
+                await self.main.end(won=False) # END GAME
                 return
 
     class gameplayView(View):
@@ -496,7 +495,7 @@ class game_wordle():
             return
         @button(label = 'Cancel', style = ButtonStyle.gray)
         async def cancel(self, interaction: Interaction, button: Button):
-            if self.interaction.user.id != interaction.user.id:
+            if self.main.interaction.user.id != interaction.user.id:
                 await interaction.followup.send("This is not your game, you can't cancel it.", ephemeral=True)
             for child in self.children: child.disabled = True
             return
@@ -528,10 +527,13 @@ class game(Group):
         if not await self.is_authorized(interaction): return
         instance = game_wordle(interaction)
         view = instance.start()
-        await interaction.followup.send(embed=Embed(title='Wordle', description='- Guess the Wordle in 6 tries.\n- Each guess must be a valid 5-letter word.\n- The letter indicators will change to show how close your guess was to the word. Examples:\n```[W]EARY\nW is in the word and in the correct spot.\nP<I>LLS\nI is in the word but in the wrong spot.```')\
+        return await interaction.followup.send(embed=Embed(title='Wordle', description='- Guess the Wordle in 6 tries.\n- Each guess must be a valid 5-letter word.\n- The letter indicators will change to show how close your guess was to the word. Examples:\n```[W]EARY\nW is in the word and in the correct spot.\nP<I>LLS\nI is in the word but in the wrong spot.```')\
                                         .uniform(interaction), view=view, ephemeral=silent)
 
 tree.add_command(game())
+
+
+
 
 class tool(Group):
     @staticmethod
@@ -559,6 +561,7 @@ class tool(Group):
         if not authorized:
             (await interaction.followup.send(embed=embed, ephemeral=True)) if followup else (await interaction.response.send_message(embed=embed, ephemeral=True))
         return authorized
+    
     @staticmethod
     def getTOTP(secret: str):
         try:
@@ -566,14 +569,56 @@ class tool(Group):
         except binascii.Error:
             result = 'Invalid secret'
         return result
-    @command(name='totp', description='Instantly generate a TOTP code from your secret.') 
-    @describe(secret = 'The secret key for TOTP', silent = 'Whether you want the output to be sent to you alone or not')
-    async def totp(self, interaction: Interaction, secret: str, silent: bool = True):
-        secret = secret.replace(' ', '')
-        await interaction.response.defer(ephemeral=silent)
-        if not await self.is_authorized(interaction): return
-        await interaction.followup.send(embed=Embed(title='TOTP', description=f'```{self.getTOTP(secret)}```').uniform(interaction), ephemeral=silent)
+    class tempRequestAnotherTOTP(View):
+        def __init__(self, main,  interaction: Interaction, secret: str) -> None:
+            super().__init__(timeout=300)
+            self.main = main
+            self.secret = secret
+            self.interaction = interaction
+        async def on_timeout(self):
+            await self.interaction.edit_original_response(content = "If you need a new code, execute the command again.", view=None)
+        @button(label='Get a new one', style=ButtonStyle.green)
+        async def get(self, interaction: Interaction, button: Button):
+            await interaction.response.defer()
+            if self.interaction.user.id != interaction.user.id:
+                await interaction.followup.send("This is not your request, you can't get a new TOTP.", ephemeral=True)
+                return
+            await self.interaction.edit_original_response(embed=Embed(title='TOTP', description=f'```{self.main.getTOTP(self.secret)}```').uniform(interaction))
+            return
+    #class staticRequestAnotherTOTP(DynamicItem[Button], template=r'dynamic:totp:(?P<mode>\w+):(?P<userid>[0-9]+):(?P<totpcode>\w+)'):
+    #    def __init__(self, userid: int, totpcode: str, mode: typing.Literal['public', 'private']) -> None:
+    #        super().__init__(item=Button(label='Get a new one', style=ButtonStyle.green, custom_id=f'dynamic:totp:{mode}:{userid}:{totpcode}'))
+    #        self.mode = mode
+    #        self.userid = userid
+    #        self.totpcode = totpcode
+    #    @classmethod
+    #    async def from_custom_id(cls, interaction: Interaction, item: Button, match: Match[str]):
+    #        userid = int(match['userid'])
+    #        totpcode = match['totpcode']
+    #        mode = match['mode']
+    #        return cls(userid=userid, totpcode=totpcode, mode=mode)
+    #    async def interaction_check(self, interaction: Interaction):
+    #        return (self.mode == 'public') or (interaction.user.id == self.userid) or (interaction.user.id in configurations.dev_ids)
+    #    async def callback(self, interaction: Interaction):
+    #        await interaction.response.defer()
+    #        view = View()
+    #        view.add_item(self)
+    #        return await interaction.edit_original_response(embed=Embed(title='TOTP', description=f'```{tool.getTOTP(self.totpcode)}```').uniform(interaction), view=view)
     
+    @command(name='totp', description='Instantly generate a TOTP code from your secret.') 
+    @describe(secret = 'The secret key for TOTP', static = 'Whether you want the button to be expired or not', public = '(Only with static mode) Whether you want the button to be interactable by other users or not', silent = 'Whether you want the output to be sent to you alone or not')
+    async def totp(self, interaction: Interaction, secret: str, static: bool = False, public: bool = False, silent: bool = True):
+        await interaction.response.defer(ephemeral=silent)
+        secret = secret.replace(' ', '')
+        if not await self.is_authorized(interaction): return
+        view: View | self.tempRequestAnotherTOTP
+        if static:
+            view = View()
+            #view.add_item(self.staticRequestAnotherTOTP(userid=interaction.user.id, totpcode=secret, mode='public' if public else 'private'))
+        else:
+            view = self.tempRequestAnotherTOTP(self, interaction, secret)
+        await interaction.followup.send(embed=Embed(title='TOTP', description=f'```{self.getTOTP(secret)}```').uniform(interaction), ephemeral=silent, view=view)
+
     class askbardModal(Modal, title='Ask your question:'):
         def __init__(self, main) -> None:
             super().__init__()
@@ -624,14 +669,19 @@ class tool(Group):
             bard_answer = await bard.get_answer(question)
             title = question
         answer = bard_answer['content']
+        if len(answer) > 4096: answer = answer[:4093] + '...'
         if len(title) > 255: title = title[:252] + '...'
         embed = Embed(title = title, description = answer).uniform(interaction)
         embed.set_author(name = "Bard", icon_url = assets.google_bard_avatar, url = "https://bard.google.com")
+        view = View()
+        underline = "\n"
+        view.add_item(Button(label="Search on Google", style=ButtonStyle.link, url=f'https://google.com/search?q={question.replace(" ", "+").replace(underline, " ")}', emoji=PartialEmoji.from_str("<:_asset_googleicon:1169516779668774954>")))
         if attachment: 
             embed.set_image(url = 'attachment://input_image.png')
-            await interaction.followup.send(embed=embed, file=File(BytesIO(img), filename='input_image.png'), ephemeral=silent)
+            await interaction.followup.send(embed=embed, file=File(BytesIO(img), filename='input_image.png'), ephemeral=silent, view=view)
         else:
-            await interaction.followup.send(embed=embed, ephemeral=silent)
+            await interaction.followup.send(embed=embed, ephemeral=silent, view=view)
+
 
 tree.add_command(tool())
 
@@ -794,8 +844,7 @@ class net(Group):
         if "error" in ipdata:
             err = ipdata.get("error")
             fieldlist = [
-                ("Error", err.get("message", None)),
-                ("Status", err.get("status", None)),
+                ("Error", err, False),
             ]
             #   "data_center": false, "public_proxy": false, "tor_exit_relay": false,
             # This address may be anonymised and belongs to a data-center or related
@@ -809,22 +858,24 @@ class net(Group):
             else:
                 notes = None
             fieldlist = [
-                ("Notes", notes),
-                ("IP", ipdata.get("ip", None)),
-                ("Continent", f'{ipdata.get("continent_name", "null")} | {ipdata.get("continent_code", "null")}'),
-                ("Country", f'{ipdata.get("country_name", "null")} | {ipdata.get("country_code", "null")} {ipdata.get("country_flag_emoji", "-")}'),
-                ("City", ipdata.get("city_name", None)),
-                ("Region", f'{ipdata.get("region_name", "null")} | {ipdata.get("region_code", "null")}'),
-                ("\u200B", "\n"),  # blank field separator
-                ("Network Route", ipdata.get("ip_range", None)),
-                ("AS Number", ipdata.get("autonomous_system_number", None)),
-                ("AS Organization", f'{ipdata.get("autonomous_system_organization", "null")} | {ipdata.get("autonomous_system_organization_alt", "-")}'),
-                ("Location (lat, long)", f'{ipdata.get("latitude", "null")}, {ipdata.get("longitude", "null")}'),
-                ("Time Zone", ipdata.get("time_zone", None))
+                ("Notes", notes, False),
+
+                ("Continent", f'{ipdata.get("continent_name", "null")} | {ipdata.get("continent_code", "null")}', True),
+                ("Country", f'{ipdata.get("country_name", "null")} | {ipdata.get("country_code", "null")}', True),
+                ("City", ipdata.get("city_name", None), True),
+                ("_____________________________________________________", "\u200b", False), # newline
+                ("Region", f'{ipdata.get("region_name", "null")} | {ipdata.get("region_code", "null")}', True),
+                ("Time Zone", ipdata.get("time_zone", None), True),
+                ("Network Route", ipdata.get("ip_range", None), True),
+                ("_____________________________________________________", "\u200b", False), # newline
+                ("Autonomous System No.", ipdata.get("autonomous_system_number", None), True),
+                ("Autonomous System Organization", f'{ipdata.get("autonomous_system_organization", "null")}{(" | " + ipdata.get("autonomous_system_organization_alt", "")) if ipdata.get("autonomous_system_organization_alt", "") else ""}', True),
+                ("_____________________________________________________", "\u200b", False), # newline
+                ("Location (lat, long)", f'{ipdata.get("latitude", "null")}, {ipdata.get("longitude", "null")}', False)
             ]
-        for field_name, field_value in fieldlist:
+        for field_name, field_value, inline in fieldlist:
             if field_value is None or "null" in str(field_value): continue
-            embed.add_field(name=field_name, value=f'`{field_value}`' if field_value else "", inline=True)
+            embed.add_field(name=field_name, value=f'{field_value}' if field_value else "", inline=inline)
         embed.uniform(interaction)
         await interaction.followup.send(embed = embed, ephemeral=silent)
     @command(name = 'unshortener', description='Capture redirects from a URL and return the final URL.')
@@ -869,9 +920,10 @@ tree.add_command(net())
 @tree.command(name='info', description='Returns the bot information.')
 @describe(silent = 'Whether you want the output to be sent to you alone or not')
 async def info(interaction: Interaction, silent: bool = False):
+    global unix_uptime
     await interaction.response.defer(ephemeral=silent)
     embed = Embed(title="Bot basic information: ")
-    embed.description = f'utils-bot is a [discord.py](https://discordpy.readthedocs.io/) bot packaged with unique & special features.\n```ansi\nPython {sysio.version} on {sysio.platform}\nType "help", "copyright", "credits" or "license" for more information.\n>>>\n```'
+    embed.description = f'utils-bot is a [discord.py](https://discordpy.readthedocs.io/) bot packaged with unique & special features.\n```ansi\nPython {sysio.version} on {sysio.platform}\nType "help", "copyright", "credits" or "license" for more information.\n>>> __import__("discord").__version__\n{discordversion}\n>>> ```'
     embed.add_field(name = 'OS, Architecture', value = f"{platform.system()} ({os.name}) {platform.release()}", inline = False)
     embed.add_field(name = 'CPU load', value = f"{psutil.cpu_percent()}% ({psutil.cpu_count()} cores)", inline = True)
     embed.add_field(name = 'Memory usage', value = f"{psutil.virtual_memory().percent}% ({round(psutil.virtual_memory().used/1024/1024/1024, 2)}GB/{round(psutil.virtual_memory().total/1024/1024/1024, 2)}GB)", inline = True)
@@ -880,8 +932,14 @@ async def info(interaction: Interaction, silent: bool = False):
     embed.add_field(name = 'Uptime', value = f"<t:{unix_uptime}:R> (<t:{unix_uptime}:T> <t:{unix_uptime}:d>)", inline = True)
     embed.add_field(name = 'Guilds/Servers', value = f"{len(client.guilds)}", inline = True)
     embed.add_field(name = 'API latency', value = f"{round(client.latency*1000)}ms", inline = True)
+    embed.set_image(url = assets.utils_bot_banner)
     embed.uniform(interaction)
-    await interaction.followup.send(embed = embed, ephemeral=silent)
+    view = View()
+    permission = 67160065
+    view.add_item(Button(style=ButtonStyle.link, label='Invite me', url=f"https://discord.com/api/oauth2/authorize?client_id={client.user.id}&permissions={permission}&scope=bot"))
+    view.add_item(Button(style=ButtonStyle.link, label='Join support server', url=configurations.bot_support_server))
+    view.add_item(Button(style=ButtonStyle.green, label='From khoi1908vn with love <3', disabled=True))
+    await interaction.followup.send(embed = embed, view=view, ephemeral=silent)
 
 """
 -------------------------------------------------

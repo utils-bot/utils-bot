@@ -1,6 +1,7 @@
-import logging
+from logging import getLogger, StreamHandler, Formatter, DEBUG, INFO, WARNING, ERROR, CRITICAL
 from typing import Literal
-class CustomFormatter(logging.Formatter):
+from configs import configurations
+class CustomFormatter(Formatter):
 
     grey = "\x1b[38;20m"
     yellow = "\x1b[33;20m"
@@ -10,22 +11,23 @@ class CustomFormatter(logging.Formatter):
     format = "[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s"
 
     FORMATS = {
-        logging.DEBUG: grey + format + reset,
-        logging.INFO: grey + format + reset,
-        logging.WARNING: yellow + format + reset,
-        logging.ERROR: red + format + reset,
-        logging.CRITICAL: bold_red + format + reset
+        DEBUG: grey + format + reset,
+        INFO: grey + format + reset,
+        WARNING: yellow + format + reset,
+        ERROR: red + format + reset,
+        CRITICAL: bold_red + format + reset
     }
 
     def format(self, record):
         log_fmt = self.FORMATS.get(record.levelno)
-        formatter = logging.Formatter(fmt = log_fmt, datefmt='%Y-%m-%d %H:%M:%S')
+        formatter = Formatter(fmt = log_fmt, datefmt='%Y-%m-%d %H:%M:%S')
         return formatter.format(record)
 
-log = logging.getLogger('internal')
-log.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+level = eval(configurations.logging_level.upper())
+log = getLogger('internal')
+log.setLevel(level)
+ch = StreamHandler()
+ch.setLevel(level)
 ch.setFormatter(CustomFormatter())
 log.addHandler(ch)
 
