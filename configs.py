@@ -2,8 +2,8 @@ from os import environ
 from json import loads
 from typing import Literal
 class configurations:
-    bot_version = 'v0.8.1' # ignore
-    logging_level: Literal['debug', 'info', 'warning', 'error', 'critical'] = 'debug'
+    bot_version = 'v0.9' # ignore
+    logging_level: Literal['debug', 'info', 'warning', 'error', 'critical'] = environ.get('logging_level', 'info').lower()
 
     bot_token = environ.get('bot_token', 'replace_with_your_own_token')
     bot_support_server = environ.get('bot_support_server', 'https://discord.gg/')
@@ -31,3 +31,4 @@ class configurations:
 
 class assets:
     google_bard_avatar = "https://cdn.discordapp.com/attachments/1143096931569107005/1143098606161772615/Google_Bard_logo.svg.png"
+    utils_bot_banner = "https://media.discordapp.net/attachments/1143096931569107005/1169530235155386449/Presentation1.png"
