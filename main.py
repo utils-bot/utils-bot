@@ -14,13 +14,15 @@ from discord.app_commands.errors import CommandOnCooldown
 from discord.gateway import DiscordWebSocket
 from discord.ui import button, View, Modal, Button, TextInput
 #from discord.ui.dynamic import DynamicItem
+from discord.utils import snowflake_time
 from discord.ext import tasks
-from db import get_user_whitelist, update_user_whitelist, check_user_whitelist
+from motor.motor_asyncio import AsyncIOMotorClient
+
 from aiohttp import ClientSession
 from logger import CustomFormatter, ilog
 from time import time
 from io import BytesIO
-from configs import configurations, assets
+from configs import configurations, assets, text
 from pyotp import TOTP
 from bardapi import BardAsync, SESSION_HEADERS
 from inspect import isawaitable
@@ -77,11 +79,12 @@ class UtilsBotClient(Client):
 
     async def setup_hook(self):
         "Do value resets, pre-sync to development guild, start loop tasks"
-        # varible reset
+        # variable reset
         global unix_uptime
         global global_ratelimit
         global maintenance_status
         global bard
+        global db
         global_ratelimit = 0
         maintenance_status = configurations.default_maintenance_status
         unix_uptime = round(time())
@@ -97,6 +100,8 @@ class UtilsBotClient(Client):
 
         ilog("Initializing Bard API...", 'client.setup_hook', 'info')
         bard = MyBardAsync(token=configurations.bardapi_1psid_token, token_1PSIDTS=configurations.bardapi_1psidts_token)
+        ilog("Initializing MongoDB...", 'client.setup_hook', 'info')
+        db = AsyncIOMotorClient(configurations.mongo_uri)
         ilog("Adding listeners to Discord items...", 'client.setup_hook', 'info')
         # self.add_dynamic.item(tool.staticRequestAnotherTOTP)
         ilog("Done! Bot will be ready soon", 'client.setup_hook', 'info')
@@ -202,14 +207,14 @@ async def sync(interaction: Interaction, delay: Range[int, 0, 60] = 30, silent: 
     maintenance_status = True
     ilog(f'Canceling looptasks', logtype = 'info', flag = 'tree sync')
     for task in client.taskloops(): task.cancel()
-    ilog(f'Waiting for anti-ratelimit', logtype = 'info', flag = 'tree sync')
+    ilog(f'Waiting for anti-ratelimit [delay: {delay}s]', logtype = 'info', flag = 'tree sync')
     await asyncio.sleep(delay)
     ilog(f'Sync-ing', logtype = 'warning', flag = 'tree sync')
     result = await tree.sync()
     ilog(f'Command tree synced via /sync by {interaction.user.id} ({interaction.user})', logtype = 'warning', flag = 'tree')
     underline = '\n'
     ilog(f'Take a look at the states: \n{underline.join(map(str, result))}', logtype = 'info', flag = 'tree sync')
-    ilog('Unlocking the bot', logtype = 'info', flag = 'tree sync')
+    ilog('Unlocking the bot [delay: 20s]', logtype = 'info', flag = 'tree sync')
     maintenance_status = configurations.default_maintenance_status
     await asyncio.sleep(20)
     ilog('Restarting looptasks', logtype = 'info', flag = 'tree sync')
@@ -274,34 +279,84 @@ class sys(Group):
             current_list = "<too many guilds>"
         embed.add_field(name = 'Guilds:', value = f"`{current_list}`")
         await interaction.followup.send(embed=embed, ephemeral=silent)
-    whitelist = Group(name='whitelist', description='Get and modify the beta whitelist in the database')
-    @whitelist.command(name = 'list', description ='restricted - Get beta whitelist list in whitelist.json')
-    @describe(silent = 'Whether you want the output to be sent to you alone or not')
-    async def whitelist_list(self, interaction: Interaction, silent: bool = False):
+    
+    blacklist = Group(name='blacklist', description='Get and modify blacklisted users in the database')
+    @blacklist.command(name='user', description='restricted - Modify blacklisted users in the database')
+    @describe(user = 'User that will be modified in the blacklist database', mode = 'add/remove the user from the database', silent = 'Whether you want the output to be sent to you alone or not')
+    async def blacklist_modify_user(self, interaction: Interaction, user: Member, mode: typing.Literal['add', 'remove'] = 'add', reason: str = '',  silent: bool = False):
+        global db
         await interaction.response.defer(ephemeral=silent)
         if not await self.is_authorized(interaction): return
-
-        embed = Embed(title='Whitelist list', description='Here is the list of beta-whitelisted user IDs:').uniform(interaction)
-        current_list = ""
-        for i in await get_user_whitelist():
-            current_list += f'<@{i}> ({i})\n'
-        embed.add_field(name='Users:', value = current_list)
-        await interaction.followup.send(embed=embed, ephemeral=silent)
-
-    # @tree.command(name = 'whitelist_modify', description='Modify beta whitelist list in database.json')
-    @whitelist.command(name = 'modify', description='restricted - Modify beta whitelist list in database.json')
-    @describe(user = 'User that will be modified in the whitelist database', mode = 'add/remove the user from the database', silent = 'Whether you want the output to be sent to you alone or not')
-    async def whitelist_modify(self, interaction: Interaction, user: Member, mode: typing.Literal['add', 'remove'] = 'add', silent: bool = False):
+        sentdm: bool = False
+        alreadyblacklisted: bool
+        alrbl_reason: str
+        dbaction1 = await db['common']['user'].find_one({'_id': user.id}, {'blacklisted': 1, 'unblorbl_reason': 1})
+        if isinstance(dbaction1, dict):
+            alreadyblacklisted = dbaction1.get('blacklisted', False)
+            alrbl_reason = dbaction1.get('unblorbl_reason', '')
+        else:
+            alreadyblacklisted = False
+            alrbl_reason = ''
+        if (mode == 'add') and (not alreadyblacklisted):
+            dbaction2 = await db['common']['user'].update_one({'_id': user.id}, {'$set': {'blacklisted': True, 'unblorbl_reason': reason}}, upsert=True)
+            if dbaction2.acknowledged:
+                try:
+                    await user.send(text.blacklisted.format(user=user.mention, subject='You', reason=reason))
+                except: pass
+                else:
+                    sentdm = True
+                await interaction.followup.send(embed=Embed(title="Success", description=f"Successfully blacklisted {user.mention} ({user.id}) from the bot.{' A DM has been sent to the user.' if sentdm else ''}").uniform(interaction), ephemeral=silent)
+        elif (mode == 'remove') and alreadyblacklisted:
+            dbaction2 = await db['common']['user'].update_one({'_id': user.id}, {'$set': {'blacklisted': False, 'unblorbl_reason': reason}}, upsert=True)
+            if dbaction2.acknowledged:
+                try:
+                    await user.send(text.unblacklisted.format(user=user.mention, subject='You', reason=reason))
+                except: pass
+                else:
+                    sentdm = True
+                await interaction.followup.send(embed=Embed(title="Success", description=f"Successfully unblacklisted {user.mention} ({user.id}) from the bot.{' A DM has been sent to the user.' if sentdm else ''}").uniform(interaction), ephemeral=silent)
+        else:
+            await interaction.followup.send(embed=Embed(title="Failed", description=f"User has been already blacklisted/unblacklisted before? \n[state: {alreadyblacklisted}, reason: {alrbl_reason}]"))
+    @blacklist.command(name='guild', description='restricted - Modify blacklisted guilds in the database')
+    @describe(guild = 'Guild that will be modified in the blacklist database', mode = 'add/remove the guild from the database', silent = 'Whether you want the output to be sent to you alone or not')
+    async def blacklist_modify_guild(self, interaction: Interaction, guild: str, mode: typing.Literal['add', 'remove'] = 'add', reason: str = '',  silent: bool = False):
+        # do the same thing as blacklist_modify_user
+        global db
         await interaction.response.defer(ephemeral=silent)
         if not await self.is_authorized(interaction): return
-        
         try:
-            update_status = await update_user_whitelist(user = user.id, add = mode == 'add')
-            await interaction.followup.send(embed=Embed(title='Done', description=f'Successfully {"added" if mode == "add" else "removed"} this user in the list: {user.mention} ({user.id})').uniform(interaction) if update_status else Embed(title='Failed', description='A error occured').uniform(interaction), ephemeral=silent)
-        except Exception as e:
-            ilog('Exception in command /whitelist_modify:' + e, logtype= 'error', flag = 'command')
-            await interaction.followup.send(ephemeral= True, embed=Embed(title="Exception occurred", description=str(e), ).uniform(interaction))
-
+            guild = snowflake_time(int(guild))
+        except:
+            await interaction.followup.send(embed=Embed(title="Error", description="Invalid guild ID.").uniform(interaction), ephemeral=silent)
+            return
+        sentdm: bool = False
+        alreadyblacklisted: bool
+        alrbl_reason: str
+        dbaction1 = await db['common']['guild'].find_one({'_id': guild}, {'blacklisted': 1, 'unblorbl_reason': 1})
+        if isinstance(dbaction1, dict):
+            alreadyblacklisted = dbaction1.get('blacklisted', False)
+            alrbl_reason = dbaction1.get('unblorbl_reason', '')
+        else:
+            alreadyblacklisted = False
+            alrbl_reason = ''
+        if (mode == 'add') and (not alreadyblacklisted):
+            dbaction2 = await db['common']['guild'].update_one({'_id': guild}, {'$set': {'blacklisted': True, 'unblorbl_reason': reason}}, upsert=True)
+            if dbaction2.acknowledged:
+                try:
+                    await interaction.guild.owner.send(text.blacklisted.format(user=interaction.guild.owner.mention, subject=f'Your server ({interaction.guild.name})', reason=reason))
+                except: pass
+                else:
+                    sentdm = True
+                await interaction.followup.send(embed=Embed(title="Success", description=f"Successfully blacklisted {guild} from the bot.{' A DM has been sent to the owner of the bot.' if sentdm else ''}").uniform(interaction), ephemeral=silent)
+        elif (mode == 'remove') and alreadyblacklisted:
+            dbaction2 =  await db['common']['guild'].update_one({"_id": guild}, {'$set': {'blacklisted': False, 'unblorbl_reason': reason}}, upsert=True)
+            if dbaction2.acknowledged:
+                try:
+                    await interaction.guild.owner.send(text.unblacklisted.format(user=interaction.guild.owner.mention, subject=f'Your server ({interaction.guild.name})', reason=reason))
+                except: pass
+                else:
+                    sentdm = True
+                await interaction.followup.send(embed=Embed(title="Success", description=f"Successfully unblacklisted {guild} from the bot.{' A DM has been sent to the owner of the bot.' if sentdm else ''}").uniform(interaction), ephemeral=silent)
 class locsys(Group):
     @staticmethod
     async def is_authorized(interaction: Interaction):
@@ -504,6 +559,7 @@ class game(Group):
     @staticmethod
     async def is_authorized(interaction: Interaction):
         global maintenance_status
+        global db
         if maintenance_status:
             await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction))
             return False
@@ -515,9 +571,21 @@ class game(Group):
         elif not interaction.guild_id in [guild.id for guild in client.guilds]:
             await interaction.followup.send(embed=Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').uniform(interaction))
             return False
-        elif not await check_user_whitelist(user = interaction.user.id):
-            await interaction.followup.send(embed = Embed(title='Forbidden', description='This command is in beta mode, only whitelisted user can access; try asking a developer to whitelist you.').uniform(interaction))
-            return False
+        else:
+            dbaction1 = await db['common']['user'].find_one({'_id': interaction.user.id}, {'blacklisted': 1})
+            if isinstance(dbaction1, dict):
+                userblacklisted = dbaction1.get('blacklisted', False)
+            else:
+                userblacklisted = False
+            if userblacklisted:
+                return False
+            dbaction2 = await db['common']['guild'].find_one({'_id': interaction.guild.id}, {'blacklisted': 1})
+            if isinstance(dbaction2, dict):
+                guildblacklisted = dbaction2.get('blacklisted', False)
+            else:
+                guildblacklisted = False
+            if guildblacklisted:
+                return False
         return True
 
     @command(name='wordle', description='Play Wordle in Discord.')
@@ -539,23 +607,42 @@ class tool(Group):
     @staticmethod
     async def is_authorized(interaction: Interaction, followup: bool = True):
         global maintenance_status
-        
-        if interaction.user.id in configurations.dev_ids:
-            return True
-        elif maintenance_status:
-            embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction)
-            authorized = False
-        elif interaction.guild_id is None:
-            embed = Embed(title='Error', description='This command can only be used in a server.').uniform(interaction)
-            authorized = False
-        elif interaction.guild_id not in [guild.id for guild in client.guilds]:
-            embed = Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').uniform(interaction)
-            authorized = False
-        elif not await check_user_whitelist(user = interaction.user.id):
-            embed = Embed(title='Forbidden', description='This command is in beta mode, only whitelisted user can access; try asking a developer to whitelist you.').uniform(interaction)
-            authorized = False
-        else:
-            authorized = True
+        while True:
+            if interaction.user.id in configurations.dev_ids:
+                return True
+            elif maintenance_status:
+                embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction)
+                authorized = False
+                break
+            elif interaction.guild_id is None:
+                embed = Embed(title='Error', description='This command can only be used in a server.').uniform(interaction)
+                authorized = False
+                break
+            elif interaction.guild_id not in [guild.id for guild in client.guilds]:
+                embed = Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').uniform(interaction)
+                authorized = False
+                break
+            else:
+                dbaction1 = await db['common']['user'].find_one({'_id': interaction.user.id}, {'blacklisted': 1})
+                print(dbaction1)
+                if isinstance(dbaction1, dict):
+                    userblacklisted = dbaction1.get('blacklisted', False)
+                else:
+                    userblacklisted = False
+                authorized = userblacklisted
+                if not authorized:
+                    if not followup: await interaction.response.defer(ephemeral=True)
+                    return authorized
+                dbaction2 = await db['common']['guild'].find_one({'_id': interaction.guild.id}, {'blacklisted': 1})
+                if isinstance(dbaction2, dict):
+                    guildblacklisted = dbaction2.get('blacklisted', False)
+                else:
+                    guildblacklisted = False
+                authorized = guildblacklisted
+                if not authorized: 
+                    if not followup: await interaction.response.defer(ephemeral=True)
+                    return authorized
+            break
         
         
         if not authorized:
@@ -689,6 +776,7 @@ class net(Group):
     @staticmethod
     async def is_authorized(interaction: Interaction):
         global maintenance_status
+        global db
         if maintenance_status:
             await interaction.followup.send(embed = Embed(title='Maintaining', description='The bot is not ready to use yet, please wait a little bit.').uniform(interaction))
             return False
@@ -700,9 +788,21 @@ class net(Group):
         elif not interaction.guild_id in [guild.id for guild in client.guilds]:
             await interaction.followup.send(embed=Embed(title='Error', description='This server is trying to use this bot as a integration for application commands, which is NOT allowed. Please consider adding the bot to the server.').uniform(interaction))
             return False
-        elif not await check_user_whitelist(user = interaction.user.id):
-            await interaction.followup.send(embed = Embed(title='Forbidden', description='This command is in beta mode, only whitelisted user can access; try asking a developer to whitelist you.').uniform(interaction))
-            return False
+        else:
+            dbaction1 = await db['common']['user'].find_one({'_id': interaction.user.id}, {'blacklisted': 1})
+            if isinstance(dbaction1, dict):
+                userblacklisted = dbaction1.get('blacklisted', False)
+            else:
+                userblacklisted = False
+            if userblacklisted:
+                return False
+            dbaction2 = await db['common']['guild'].find_one({'_id': interaction.guild.id}, {'blacklisted': 1})
+            if isinstance(dbaction2, dict):
+                guildblacklisted = dbaction2.get('blacklisted', False)
+            else:
+                guildblacklisted = False
+            if guildblacklisted:
+                return False
         return True
     @staticmethod
     async def get_ip_info(ip) -> dict:
@@ -917,6 +1017,7 @@ class net(Group):
 
 tree.add_command(net())
 
+
 @tree.command(name='info', description='Returns the bot information.')
 @describe(silent = 'Whether you want the output to be sent to you alone or not')
 async def info(interaction: Interaction, silent: bool = False):
@@ -940,6 +1041,7 @@ async def info(interaction: Interaction, silent: bool = False):
     view.add_item(Button(style=ButtonStyle.link, label='Join support server', url=configurations.bot_support_server))
     view.add_item(Button(style=ButtonStyle.green, label='From khoi1908vn with love <3', disabled=True))
     await interaction.followup.send(embed = embed, view=view, ephemeral=silent)
+
 
 """
 -------------------------------------------------

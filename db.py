@@ -1,4 +1,4 @@
-import aiohttp, json
+"""import aiohttp, json
 from os import path
 from configs import configurations
 DATABASE_URL = configurations.database_url
@@ -26,3 +26,4 @@ async def check_user_whitelist(user: int):
         async with session.get(f'{DATABASE_URL}/whitelist/user/check/{user}', headers=headers) as response:
             data = await response.json()
             return data['whitelisted']
+"""
